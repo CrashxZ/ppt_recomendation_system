@@ -1,4 +1,16 @@
 :root {
+  font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.theme-light {
   color-scheme: light;
   --bg: #f3efe7;
   --panel: rgba(255, 252, 247, 0.88);
@@ -11,15 +23,26 @@
   --safe: #4b7f52;
   --warn: #b6493d;
   --shadow: 0 24px 80px rgba(41, 53, 44, 0.12);
-  font-family: "Segoe UI", "Helvetica Neue", sans-serif;
 }
 
-* {
-  box-sizing: border-box;
+.theme-dark {
+  color-scheme: dark;
+  --bg: #071412;
+  --panel: rgba(11, 28, 26, 0.86);
+  --text: #e7f3ef;
+  --muted: #9ab4ad;
+  --line: rgba(183, 223, 213, 0.12);
+  --accent: #39b7a6;
+  --accent-strong: #8adfd0;
+  --signal: #f4a261;
+  --safe: #89c98d;
+  --warn: #ff8d80;
+  --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
 }
 
-body {
-  margin: 0;
+.theme-light,
+.theme-dark {
+  min-height: 100vh;
   background:
     radial-gradient(circle at top left, rgba(15, 118, 110, 0.18), transparent 28%),
     radial-gradient(circle at bottom right, rgba(223, 122, 54, 0.12), transparent 24%),
@@ -46,6 +69,7 @@ button {
   color: #fff;
   cursor: pointer;
   padding: 0.85rem 1.2rem;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 input,
@@ -55,8 +79,14 @@ textarea {
   margin-top: 0.45rem;
   border: 1px solid rgba(16, 35, 28, 0.14);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.08);
   padding: 0.9rem 1rem;
+  color: var(--text);
+}
+
+select option {
+  color: #111111;
+  background: #ffffff;
 }
 
 textarea {
@@ -111,9 +141,22 @@ textarea {
 .result-preview,
 .summary-banner {
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.06);
   border-radius: 24px;
   padding: 1rem 1.1rem;
+}
+
+.secondary-button {
+  width: 100%;
+  margin-top: 1rem;
+  background: transparent;
+  color: var(--accent-strong);
+  border: 1px solid rgba(15, 118, 110, 0.22);
+}
+
+.compact-button {
+  width: auto;
+  margin-top: 0;
 }
 
 .login-card {
@@ -135,6 +178,27 @@ textarea {
   text-transform: uppercase;
   font-size: 0.72rem;
   color: var(--accent-strong);
+}
+
+.hero-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.hero-image {
+  position: relative;
+  margin-top: 1.5rem;
+  height: 220px;
+  border-radius: 28px;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(4, 12, 12, 0.18), rgba(4, 12, 12, 0.42)),
+    url("/login-source-3.jpeg");
+  background-position: center;
+  background-size: cover;
+  overflow: hidden;
 }
 
 .alert {
@@ -228,7 +292,7 @@ textarea {
 }
 
 .contrast {
-  background: linear-gradient(180deg, rgba(255, 249, 240, 0.92), rgba(239, 248, 246, 0.9));
+  background: linear-gradient(180deg, rgba(255, 249, 240, 0.08), rgba(239, 248, 246, 0.06));
 }
 
 .key-value {
@@ -347,7 +411,7 @@ textarea {
   align-items: center;
   padding: 1rem;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(16, 35, 28, 0.08);
 }
 

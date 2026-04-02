@@ -24,6 +24,7 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [profile, setProfile] = useState(defaultProfile);
   const [weights, setWeights] = useState(defaultWeights);
+  const [theme, setTheme] = useState("dark");
 
   const activeDataset = datasets.find((dataset) => dataset.id === profile.datasetId) ?? datasets[0];
   const weightedResults = useMemo(
@@ -36,33 +37,43 @@ function App() {
   );
 
   return (
-    <Routes>
-      <Route
-        path="/login"
-        element={
-          <LoginPage
-            isAuthenticated={isAuthenticated}
-            onLogin={() => setIsAuthenticated(true)}
-          />
-        }
-      />
-      <Route
-        path="/*"
-        element={
-          <ProtectedApp
-            isAuthenticated={isAuthenticated}
-            profile={profile}
-            setProfile={setProfile}
-            weights={weights}
-            setWeights={setWeights}
-            activeDataset={activeDataset}
-            weightedResults={weightedResults}
-            paretoResults={paretoResults}
-            onLogout={() => setIsAuthenticated(false)}
-          />
-        }
-      />
-    </Routes>
+    <div className={theme === "dark" ? "theme-dark" : "theme-light"}>
+      <Routes>
+        <Route
+          path="/login"
+          element={
+            <LoginPage
+              isAuthenticated={isAuthenticated}
+              onLogin={() => setIsAuthenticated(true)}
+              theme={theme}
+              onToggleTheme={() =>
+                setTheme((current) => (current === "dark" ? "light" : "dark"))
+              }
+            />
+          }
+        />
+        <Route
+          path="/*"
+          element={
+            <ProtectedApp
+              isAuthenticated={isAuthenticated}
+              profile={profile}
+              setProfile={setProfile}
+              weights={weights}
+              setWeights={setWeights}
+              activeDataset={activeDataset}
+              weightedResults={weightedResults}
+              paretoResults={paretoResults}
+              onLogout={() => setIsAuthenticated(false)}
+              theme={theme}
+              onToggleTheme={() =>
+                setTheme((current) => (current === "dark" ? "light" : "dark"))
+              }
+            />
+          }
+        />
+      </Routes>
+    </div>
   );
 }
 
@@ -76,6 +87,8 @@ function ProtectedApp(props) {
       profile={props.profile}
       activeDataset={props.activeDataset}
       onLogout={props.onLogout}
+      theme={props.theme}
+      onToggleTheme={props.onToggleTheme}
     >
       <Routes>
         <Route path="/" element={<Navigate to="/onboarding" replace />} />
@@ -127,7 +140,7 @@ function ProtectedApp(props) {
   );
 }
 
-function LoginPage({ isAuthenticated, onLogin }) {
+function LoginPage({ isAuthenticated, onLogin, theme, onToggleTheme }) {
   const navigate = useNavigate();
   const [email, setEmail] = useState(demoUser.email);
   const [password, setPassword] = useState(demoUser.password);
@@ -152,14 +165,16 @@ function LoginPage({ isAuthenticated, onLogin }) {
   return (
     <main className="auth-layout">
       <section className="hero-card">
-        <div>
+        <div className="hero-topbar">
           <span className="eyebrow">PAIR platform</span>
-          <h1>Task 2.2 recommendation demo for transportation data sharing.</h1>
-          <p>
-            This mockup focuses on the stakeholder workflow in Section 5.2: specify an ITS
-            dataset and application, set metric preferences, and review candidate
-            privacy-preserving techniques.
-          </p>
+          <button type="button" className="secondary-button compact-button" onClick={onToggleTheme}>
+            {theme === "dark" ? "Light mode" : "Dark mode"}
+          </button>
+        </div>
+
+        <div>
+          <h1>PAIR platform</h1>
+          <div className="hero-image" aria-hidden="true" />
         </div>
 
         <div className="credential-card">
@@ -193,7 +208,7 @@ function LoginPage({ isAuthenticated, onLogin }) {
   );
 }
 
-function Shell({ children, profile, activeDataset, onLogout }) {
+function Shell({ children, profile, activeDataset, onLogout, theme, onToggleTheme }) {
   const location = useLocation();
 
   return (
@@ -207,6 +222,10 @@ function Shell({ children, profile, activeDataset, onLogout }) {
             tradeoffs.
           </p>
         </div>
+
+        <button type="button" className="secondary-button compact-button" onClick={onToggleTheme}>
+          {theme === "dark" ? "Light mode" : "Dark mode"}
+        </button>
 
         <nav className="step-nav">
           {steps.map((step, index) => (

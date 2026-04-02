@@ -1,7 +1,7 @@
 export const demoUser = {
   email: "stakeholder@pair-demo.org",
   password: "pair-demo-2026",
-  name: "Maya Chen",
+  name: "Mainak Mondal",
   role: "Agency Data Owner",
   organization: "Metro ITS Data Office",
 };
