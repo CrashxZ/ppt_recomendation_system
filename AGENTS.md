@@ -4,27 +4,29 @@ This file defines working conventions for agents contributing to this repository
 
 ## Mission
 
-Build a polished, demo-ready web mockup for the PAIR platform's **Thrust 2** workflow:
+Build a polished, demo-ready web mockup for the PAIR platform's **Section 5.2 / Task 2.2** workflow:
 
 - stakeholder login
-- dataset onboarding
-- benchmark-backed PPT discovery
+- dataset and ITS application onboarding
+- stakeholder preference capture
 - PPT recommendation
+- Pareto tradeoff exploration
 - privacy-aware data visualization
 
 The goal is a credible demonstration artifact, not a production platform.
 
 ## Source of Truth
 
-The product direction comes from `PDaSP Report-v6.pptx` in the repository root.
+The product direction comes from:
 
-Primary slides to align with:
+- `PDaSP Report-v6.pptx`
+- `PDaSP Transportation Privacy.pdf`
 
-- `Task 2.1`: Benchmark Repository for "PPTs + ITS Data/Applications"
-- `Task 2.2`: PPT Recommendation System
-- `Task 2.3`: Web Interface
+Primary scope to align with:
 
-Use the terminology from the deck:
+- `Section 5.2`: `Task 2.2: PPT Recommendation System and Web Interface Development`
+
+Use the terminology from the deck and PDF:
 
 - PAIR platform
 - PPT = privacy-preserving technique
@@ -37,12 +39,15 @@ Use the terminology from the deck:
 
 ## Product Constraints
 
-- Scope is limited to **Thrust 2**
+- Scope is limited to **Task 2.2**
 - Mockup only; hardcoded data is acceptable
 - Default persona is an agency or transportation data-sharing stakeholder
 - Default dataset story is NGSIM-style traffic trajectory data
 - Authentication can be fake/client-side
 - Recommendations should be deterministic and explainable
+- The recommendation workflow should support both:
+- weighted-sum scoring from stakeholder-specified metric priorities
+- Pareto-based tradeoff exploration without explicit metric weights
 
 Do not over-engineer backend infrastructure unless the current task explicitly requires it.
 
@@ -59,6 +64,7 @@ Do not over-engineer backend infrastructure unless the current task explicitly r
 - The app should feel like a stakeholder-facing platform, not a generic admin template
 - Emphasize tradeoffs between privacy, utility, efficiency, auditability, and compliance
 - Keep the recommendation logic visible and understandable in the UI
+- Make the distinction between "weighted recommendation" and "tradeoff exploration" obvious
 - Use concise explanatory copy grounded in transportation privacy and data sharing
 - Include charts or visual comparisons that communicate "raw vs privacy-preserved" outcomes
 
@@ -67,10 +73,10 @@ Do not over-engineer backend infrastructure unless the current task explicitly r
 Agents should generally work toward this flow:
 
 1. `Login`
-2. `Data Onboarding`
-3. `Dashboard`
+2. `Dataset Onboarding`
+3. `Preference Selection`
 4. `Recommendation`
-5. `Visualization`
+5. `Tradeoff + Visualization`
 
 ## Data Modeling Guidance
 
@@ -84,6 +90,10 @@ Prefer small, explicit frontend types such as:
 - `VisualizationSeries`
 
 The recommendation engine should use weighted scoring or another transparent rule-based approach unless a task explicitly changes that direction.
+The default recommendation design is:
+
+- weighted-sum ranking for user-specified preferences
+- Pareto-front identification for no-priority tradeoff exploration
 
 ## Delivery Standard
 
@@ -105,4 +115,5 @@ If a future task adds backend behavior, preserve a clear separation between:
 - real encryption
 - real dataset ingestion pipelines
 - scientific validation of recommendation scores
+- full Task 2.1 repository implementation
 - full Thrust 1, 3, or 4 implementation
