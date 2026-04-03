@@ -159,7 +159,7 @@ function LoginPage({ isAuthenticated, onLogin, theme, onToggleTheme }) {
       return;
     }
 
-    setError("Use the demo stakeholder credentials shown on the screen.");
+    setError("Use the demo credentials shown on the screen.");
   }
 
   return (
@@ -215,8 +215,8 @@ function Shell({ children, profile, activeDataset, onLogout, theme, onToggleThem
     <div className="app-shell">
       <aside className="sidebar">
         <div>
-          <span className="eyebrow">PAIR Task 2.2</span>
-          <h2>Stakeholder Recommendation Workspace</h2>
+          <span className="eyebrow">PAIR Portal</span>
+          <h2>Stakeholder Workspace</h2>
           <p className="muted">
             Candidate PPT selection for ITS datasets using weighted preferences and Pareto
             tradeoffs.
@@ -269,8 +269,8 @@ function OnboardingPage({ profile, setProfile, activeDataset }) {
     <section className="page">
       <div className="page-header">
         <div>
-          <span className="eyebrow">Section 5.2 workflow</span>
-          <h1>Select an ITS dataset and application context.</h1>
+          <span className="eyebrow">Workflow</span>
+          <h1>Select an ITS Dataset and Application context.</h1>
         </div>
         <button onClick={() => navigate("/preferences")}>Continue to preferences</button>
       </div>
@@ -449,7 +449,7 @@ function RecommendationsPage({ profile, activeDataset, weights, weightedResults 
       <div className="page-header">
         <div>
           <span className="eyebrow">Candidate PPTs</span>
-          <h1>Ranked recommendations for the current stakeholder scenario.</h1>
+          <h1>Ranked recommendations for the current scenario.</h1>
         </div>
         <button onClick={() => navigate("/tradeoffs")}>Explore tradeoffs</button>
       </div>
@@ -461,7 +461,7 @@ function RecommendationsPage({ profile, activeDataset, weights, weightedResults 
         </div>
         <div>
           <strong>Priority mode</strong>
-          <p>Weighted-sum ranking across 6 Section 5.2 metrics</p>
+          <p>Weighted-sum ranking across metrics</p>
         </div>
         <div>
           <strong>Top recommendation</strong>
@@ -543,8 +543,7 @@ function TradeoffPage({ profile, paretoResults, weightedResults }) {
         <div className="panel">
           <h3>Pareto front</h3>
           <p className="muted">
-            These techniques are not dominated across the six evaluation metrics described in
-            Section 5.2.
+            These techniques are not dominated across the six evaluation metrics.
           </p>
           <div className="pareto-list">
             {paretoResults.map((technique) => (
