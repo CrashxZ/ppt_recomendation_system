@@ -332,6 +332,11 @@ textarea {
   background: linear-gradient(180deg, rgba(255, 248, 240, 0.95), rgba(255, 255, 255, 0.85));
 }
 
+.theme-dark .result-card.top {
+  border-color: rgba(244, 162, 97, 0.35);
+  background: linear-gradient(180deg, rgba(56, 34, 20, 0.78), rgba(20, 34, 32, 0.92));
+}
+
 .result-header,
 .pareto-item {
   display: flex;
