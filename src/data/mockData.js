@@ -153,3 +153,41 @@ export const trajectoryPreview = [
   { lane: "Lane 3", raw: 126, protected: 120 },
   { lane: "Lane 4", raw: 91, protected: 87 },
 ];
+
+export const predictionSeries = [
+  { minute: "08:30", observed: 154, predicted: 159, confidence: "High" },
+  { minute: "08:35", observed: 149, predicted: 153, confidence: "High" },
+  { minute: "08:40", observed: 144, predicted: 148, confidence: "Medium" },
+  { minute: "08:45", observed: 141, predicted: 146, confidence: "Medium" },
+];
+
+export const trajectorySampleRows = [
+  {
+    vehicleId: "V-1042",
+    lane: "Lane 2",
+    speedMph: 53,
+    headwaySec: 1.7,
+    nextState: "Maintain lane",
+  },
+  {
+    vehicleId: "V-1178",
+    lane: "Lane 3",
+    speedMph: 47,
+    headwaySec: 2.4,
+    nextState: "Merge left",
+  },
+  {
+    vehicleId: "V-1230",
+    lane: "Lane 1",
+    speedMph: 58,
+    headwaySec: 1.4,
+    nextState: "Maintain lane",
+  },
+  {
+    vehicleId: "V-1306",
+    lane: "Lane 4",
+    speedMph: 41,
+    headwaySec: 3.1,
+    nextState: "Slowdown event",
+  },
+];

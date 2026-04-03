@@ -7,8 +7,10 @@ import {
   defaultWeights,
   demoUser,
   metrics,
+  predictionSeries,
   pptCatalog,
   trafficSeries,
+  trajectorySampleRows,
   trajectoryPreview,
 } from "./data/mockData";
 import { calculateParetoFront, normalizeWeights, scoreTechniques } from "./lib/recommendation";
@@ -17,6 +19,7 @@ const steps = [
   { path: "/onboarding", label: "Dataset" },
   { path: "/preferences", label: "Preferences" },
   { path: "/recommendations", label: "Recommendations" },
+  { path: "/preview", label: "Data Preview" },
   { path: "/tradeoffs", label: "Tradeoffs" },
 ];
 
@@ -121,6 +124,16 @@ function ProtectedApp(props) {
               profile={props.profile}
               activeDataset={props.activeDataset}
               weights={props.weights}
+              weightedResults={props.weightedResults}
+            />
+          }
+        />
+        <Route
+          path="/preview"
+          element={
+            <PreviewPage
+              profile={props.profile}
+              activeDataset={props.activeDataset}
               weightedResults={props.weightedResults}
             />
           }
@@ -270,7 +283,7 @@ function OnboardingPage({ profile, setProfile, activeDataset }) {
       <div className="page-header">
         <div>
           <span className="eyebrow">Workflow</span>
-          <h1>Select an ITS Dataset and Application context.</h1>
+          <h1>Select an NDD Dataset and Transportation Application.</h1>
         </div>
         <button onClick={() => navigate("/preferences")}>Continue to preferences</button>
       </div>
@@ -296,7 +309,7 @@ function OnboardingPage({ profile, setProfile, activeDataset }) {
             </label>
 
             <label>
-              ITS application
+              Transportation Application
               <select
                 value={profile.application}
                 onChange={(event) =>
@@ -524,6 +537,113 @@ function RecommendationsPage({ profile, activeDataset, weights, weightedResults 
             </span>
           ))}
         </div>
+        <button className="inline-button" onClick={() => navigate("/preview")}>
+          Open data preview
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function PreviewPage({ profile, activeDataset, weightedResults }) {
+  const navigate = useNavigate();
+  const topTechnique = weightedResults[0];
+
+  return (
+    <section className="page">
+      <div className="page-header">
+        <div>
+          <span className="eyebrow">Dataset snapshot</span>
+          <h1>Mock traffic views, trajectory context, and short-horizon prediction.</h1>
+        </div>
+        <button onClick={() => navigate("/tradeoffs")}>Continue to tradeoffs</button>
+      </div>
+
+      <div className="grid two-column">
+        <div className="panel camera-panel">
+          <h3>Traffic camera style snapshot</h3>
+          <div className="camera-frame">
+            <img src="/login-source-3.jpeg" alt="Traffic intersection with vehicles" />
+            <div className="camera-overlay">
+              <span>Live intake: corridor camera A12</span>
+              <strong>22 tracked vehicles</strong>
+            </div>
+          </div>
+          <p className="muted">
+            Secondary visual cue only. The stakeholder-facing workflow still centers on trajectory
+            and privacy-preserving recommendation.
+          </p>
+        </div>
+
+        <div className="panel contrast">
+          <h3>Current dataset interpretation</h3>
+          <div className="key-value">
+            <span>Dataset</span>
+            <strong>{activeDataset.label}</strong>
+          </div>
+          <div className="key-value">
+            <span>Application</span>
+            <strong>{profile.application}</strong>
+          </div>
+          <div className="key-value">
+            <span>Top PPT</span>
+            <strong>{topTechnique?.name ?? "Not available"}</strong>
+          </div>
+          <div className="prediction-summary">
+            <strong>Prediction note</strong>
+            <p>
+              Corridor flow is expected to stabilize over the next 15 minutes with moderate speed
+              recovery if the current privacy-preserved release keeps lane-level counts intact.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid two-column charts">
+        <div className="panel">
+          <h3>Trajectory-derived traffic profile</h3>
+          <SimpleSeriesChart data={trafficSeries} />
+        </div>
+
+        <div className="panel">
+          <h3>Lane occupancy raw vs protected</h3>
+          <LaneComparisonChart data={trajectoryPreview} />
+        </div>
+      </div>
+
+      <div className="grid two-column">
+        <div className="panel">
+          <h3>Short-horizon prediction</h3>
+          <PredictionChart data={predictionSeries} />
+        </div>
+
+        <div className="panel">
+          <h3>Trajectory sample rows</h3>
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Vehicle</th>
+                  <th>Lane</th>
+                  <th>Speed</th>
+                  <th>Headway</th>
+                  <th>Next state</th>
+                </tr>
+              </thead>
+              <tbody>
+                {trajectorySampleRows.map((row) => (
+                  <tr key={row.vehicleId}>
+                    <td>{row.vehicleId}</td>
+                    <td>{row.lane}</td>
+                    <td>{row.speedMph} mph</td>
+                    <td>{row.headwaySec}s</td>
+                    <td>{row.nextState}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </section>
   );
@@ -650,6 +770,38 @@ function LaneComparisonChart({ data }) {
           <div className="lane-values">
             <span>{point.raw}</span>
             <span>{point.protected}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PredictionChart({ data }) {
+  const maxValue = Math.max(...data.flatMap((point) => [point.observed, point.predicted]));
+
+  return (
+    <div className="prediction-chart">
+      {data.map((point) => (
+        <div key={point.minute} className="prediction-row">
+          <div className="chart-label">{point.minute}</div>
+          <div className="prediction-bars">
+            <div className="lane-track">
+              <div
+                className="lane-bar raw"
+                style={{ width: `${(point.observed / maxValue) * 100}%` }}
+              />
+            </div>
+            <div className="lane-track">
+              <div
+                className="lane-bar safe"
+                style={{ width: `${(point.predicted / maxValue) * 100}%` }}
+              />
+            </div>
+          </div>
+          <div className="lane-values">
+            <span>{point.observed}/{point.predicted}</span>
+            <span>{point.confidence}</span>
           </div>
         </div>
       ))}
