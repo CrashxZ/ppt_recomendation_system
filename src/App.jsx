@@ -381,7 +381,7 @@ function PreferencesPage({ profile, activeDataset, weights, setWeights, weighted
       <div className="page-header">
         <div>
           <span className="eyebrow">Weighted-sum recommendation</span>
-          <h1>Specify stakeholder priorities across the Section 5.2 metrics.</h1>
+          <h1>Specify priorities across the given metrics.</h1>
         </div>
         <button onClick={() => navigate("/recommendations")}>See recommendations</button>
       </div>
