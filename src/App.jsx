@@ -689,7 +689,7 @@ function TradeoffPage({ profile, paretoResults, weightedResults }) {
         </div>
       </div>
 
-      <div className="grid two-column charts">
+      {/* <div className="grid two-column charts">
         <div className="panel">
           <h3>Traffic volume and speed snapshot</h3>
           <SimpleSeriesChart data={trafficSeries} />
@@ -699,7 +699,7 @@ function TradeoffPage({ profile, paretoResults, weightedResults }) {
           <h3>Lane-level raw vs protected counts</h3>
           <LaneComparisonChart data={trajectoryPreview} />
         </div>
-      </div>
+      </div> */}
     </section>
   );
 }
