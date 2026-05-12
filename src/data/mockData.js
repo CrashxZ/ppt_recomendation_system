@@ -8,7 +8,7 @@ export const demoUser = {
 
 export const metrics = [
   { id: "up", label: "User-Level Privacy", short: "U-P" },
-  { id: "sp", label: "Site-Level Privacy", short: "S-P" },
+  { id: "sp", label: "Dataset-Level Privacy", short: "S-P" },
   { id: "utility", label: "Utility", short: "U" },
   { id: "efficiency", label: "Efficiency", short: "E" },
   { id: "auditability", label: "Privacy Auditability", short: "P-A" },
