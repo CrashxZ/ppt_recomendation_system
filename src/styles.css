@@ -326,9 +326,93 @@ textarea {
   gap: 0.5rem;
 }
 
+.slider-head {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.slider-copy {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.metric-thumb {
+  width: 84px;
+  height: 54px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.metric-link {
+  color: var(--accent-strong);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.slider-help {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
 .slider-row p {
   margin: 0.25rem 0 0;
   color: var(--muted);
+}
+
+.guide-intro p:last-child {
+  margin-bottom: 0;
+}
+
+.metric-guide-list {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.metric-guide-section {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 1.35rem;
+  scroll-margin-top: 1rem;
+}
+
+.metric-guide-section:target {
+  border-color: rgba(57, 183, 166, 0.45);
+  box-shadow: 0 0 0 1px rgba(57, 183, 166, 0.24);
+}
+
+.metric-guide-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 22px;
+  border: 1px solid var(--line);
+}
+
+.metric-guide-copy p,
+.metric-guide-copy ul {
+  color: var(--muted);
+}
+
+.metric-guide-copy ul {
+  padding-left: 1.1rem;
+}
+
+.guide-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.guide-links a {
+  color: var(--accent-strong);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
 }
 
 .result-card.top {
@@ -565,7 +649,8 @@ textarea {
   .two-column,
   .summary-banner,
   .split-notes,
-  .metric-grid {
+  .metric-grid,
+  .metric-guide-section {
     grid-template-columns: 1fr;
   }
 

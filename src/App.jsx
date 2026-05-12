@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import {
   applications,
@@ -6,6 +6,8 @@ import {
   defaultProfile,
   defaultWeights,
   demoUser,
+  metricGuideIntro,
+  metricGuides,
   metrics,
   predictionSeries,
   pptCatalog,
@@ -22,6 +24,8 @@ const steps = [
   { path: "/preview", label: "Data Preview" },
   { path: "/tradeoffs", label: "Tradeoffs" },
 ];
+
+const metricGuideById = Object.fromEntries(metricGuides.map((metric) => [metric.id, metric]));
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -116,6 +120,10 @@ function ProtectedApp(props) {
               weightedResults={props.weightedResults}
             />
           }
+        />
+        <Route
+          path="/metrics"
+          element={<MetricsGuidePage />}
         />
         <Route
           path="/recommendations"
@@ -405,17 +413,33 @@ function PreferencesPage({ profile, activeDataset, weights, setWeights, weighted
           <p className="muted">
             The weighted-sum mode reflects the PDF’s site-specified preference workflow.
           </p>
+          <p className="muted">
+            Click any metric name to open the full explainer page for that metric.
+          </p>
           <div className="slider-list">
             {metrics.map((metric) => (
-              <label key={metric.id} className="slider-row">
+              <div key={metric.id} className="slider-row">
+                <div className="slider-head">
+                  <img
+                    className="metric-thumb"
+                    src={metricGuideById[metric.id]?.image}
+                    alt=""
+                  />
+                  <div className="slider-copy">
+                    <Link className="metric-link" to={`/metrics#${metric.id}`}>
+                      <strong>{metric.label}</strong>
+                    </Link>
+                    <span className="slider-help">Open metric explainer</span>
+                  </div>
+                </div>
                 <div>
-                  <strong>{metric.label}</strong>
                   <p>{Math.round(normalized[metric.id] * 100)}% of final score</p>
                 </div>
                 <input
                   type="range"
                   min="0"
                   max="40"
+                  aria-label={metric.label}
                   value={weights[metric.id]}
                   onChange={(event) =>
                     setWeights((current) => ({
@@ -424,7 +448,7 @@ function PreferencesPage({ profile, activeDataset, weights, setWeights, weighted
                     }))
                   }
                 />
-              </label>
+              </div>
             ))}
           </div>
         </div>
@@ -449,6 +473,78 @@ function PreferencesPage({ profile, activeDataset, weights, setWeights, weighted
             <p>{weightedResults[0]?.summary ?? "Adjust the dataset or application filters."}</p>
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function MetricsGuidePage() {
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!location.hash) {
+      window.scrollTo({ top: 0, behavior: "auto" });
+      return;
+    }
+
+    const target = document.getElementById(location.hash.replace("#", ""));
+    if (target) {
+      requestAnimationFrame(() => {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }, [location.hash]);
+
+  return (
+    <section className="page" id="metrics-guide-top">
+      <div className="page-header">
+        <div>
+          <span className="eyebrow">Metric guide</span>
+          <h1>Explanation of each recommendation metric used in the preferences page.</h1>
+        </div>
+        <Link className="secondary-button compact-button" to="/preferences">
+          Back to Preferences
+        </Link>
+      </div>
+
+      <div className="panel guide-intro">
+        <h3>How to use this page</h3>
+        <p className="muted">
+          Each section below matches one metric slider from the preferences page. These definitions
+          explain what the metric is trying to protect or preserve when PAIR ranks privacy-preserving
+          techniques.
+        </p>
+        <p>{metricGuideIntro}</p>
+      </div>
+
+      <div className="metric-guide-list">
+        {metricGuides.map((metric) => (
+          <article key={metric.id} id={metric.id} className="panel metric-guide-section">
+            <div className="metric-guide-media">
+              <img src={metric.image} alt={`${metric.title} illustration`} />
+            </div>
+
+            <div className="metric-guide-copy">
+              <span className="eyebrow">{metric.short}</span>
+              <h3>{metric.title}</h3>
+              {metric.paragraphs.map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
+              {metric.bullets ? (
+                <ul>
+                  {metric.bullets.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              ) : null}
+
+              <div className="guide-links">
+                <Link to="/preferences">Back to Preferences</Link>
+                <a href="#metrics-guide-top">Back to top</a>
+              </div>
+            </div>
+          </article>
+        ))}
       </div>
     </section>
   );

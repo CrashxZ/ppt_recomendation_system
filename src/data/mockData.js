@@ -15,6 +15,78 @@ export const metrics = [
   { id: "compliance", label: "Policy Compliance", short: "P-C" },
 ];
 
+export const metricGuideIntro =
+  "Privacy protection techniques (PPTs) can include encryption and data obfuscation methods such as noise injection, blurring faces or vehicle plates, and generalizing or suppressing values.";
+
+export const metricGuides = [
+  {
+    id: "up",
+    title: "User-Level Privacy",
+    short: "U-P",
+    image: "/metric-images/user_level_v2.png",
+    paragraphs: [
+      "Individual level: aim to protect individual users' sensitive information (e.g., mobility activities, license plate, faces, etc.).",
+    ],
+  },
+  {
+    id: "sp",
+    title: "Dataset-Level Privacy",
+    short: "S-P",
+    image: "/metric-images/site_level_v2.png",
+    paragraphs: [
+      "Dataset-level: Overall protection of all users' sensitive information in the dataset.",
+      "Related site level view: Overall protection of all users' sensitive information hosted at the site.",
+    ],
+  },
+  {
+    id: "utility",
+    title: "Utility Preservation",
+    short: "U",
+    image: "/metric-images/utility_v2.png",
+    paragraphs: [
+      "Utility preservation evaluates how much useful information remains after applying a privacy-preserving technology.",
+      "This can be measured through:",
+    ],
+    bullets: [
+      "Information loss, which quantifies how much original data information is removed, distorted, or anonymized.",
+      "Accuracy loss of downstream tasks, which measures the performance degradation of downstream applications such as traffic prediction, object detection, re-identification, trajectory analysis, or safety monitoring.",
+      "Preserved application performance, which evaluates whether the protected data can still support practical transportation applications with acceptable accuracy.",
+    ],
+  },
+  {
+    id: "efficiency",
+    title: "Efficiency",
+    short: "E",
+    image: "/metric-images/efficiency_v2.png",
+    paragraphs: [
+      "Efficiency measures the computational and operational overhead introduced by the PPTs, including communication overheads and memory consumption.",
+    ],
+  },
+  {
+    id: "auditability",
+    title: "Privacy Auditability",
+    short: "P-A",
+    image: "/metric-images/audit_v2.png",
+    paragraphs: [
+      "Privacy auditability measures whether the privacy claim of a PPT can be evaluated through a reproducible audit.",
+      "This dimension focuses on whether researchers, agencies, or external auditors can practically verify the claimed privacy protection, including:",
+    ],
+    bullets: [
+      "verifying the privacy risks under PPT",
+      "translating the ensured privacy guarantees to practical risks",
+    ],
+  },
+  {
+    id: "compliance",
+    title: "Privacy Policy Compliance",
+    short: "P-C",
+    image: "/metric-images/compliance_v2.png",
+    paragraphs: [
+      "Privacy policy compliance measures whether the protected data, model, protocol, recommendation, or workflow satisfies predefined privacy requirements, such as privacy laws and regulations, and the data governance guidelines by USDOT/FHWA or state/city DOTs.",
+    ],
+  },
+];
+
 export const datasets = [
   {
     id: "ngsim-i80",
