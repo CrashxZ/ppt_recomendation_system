@@ -432,6 +432,28 @@ textarea {
   gap: 1rem;
 }
 
+.result-subhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.result-subhead p {
+  margin: 0;
+}
+
+.demo-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(57, 183, 166, 0.12);
+  color: var(--accent-strong);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .rank-badge,
 .score-badge,
 .pareto-tag {
@@ -462,6 +484,66 @@ textarea {
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0.75rem;
   margin: 1rem 0;
+}
+
+.technique-demo {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.technique-demo-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+.technique-demo-head .muted,
+.technique-demo p.muted {
+  margin: 0;
+}
+
+.demo-caption {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.demo-media-frame {
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(7, 20, 18, 0.32);
+}
+
+.demo-media {
+  display: block;
+  width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.synthetic-demo {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.synthetic-demo-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 90px;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.synthetic-demo-bars {
+  display: grid;
+  gap: 0.35rem;
 }
 
 .metric-tile {
@@ -665,7 +747,8 @@ textarea {
 
   .chart-row,
   .lane-row,
-  .prediction-row {
+  .prediction-row,
+  .synthetic-demo-row {
     grid-template-columns: 1fr;
   }
 }

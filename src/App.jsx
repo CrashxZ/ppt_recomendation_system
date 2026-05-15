@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import federatedLearningDemo from "../federated_learning.gif";
 import {
   applications,
   datasets,
@@ -26,6 +27,29 @@ const steps = [
 ];
 
 const metricGuideById = Object.fromEntries(metricGuides.map((metric) => [metric.id, metric]));
+const featuredDemoTechniqueIds = ["dp-synthetic", "ppfl"];
+const techniqueDemos = {
+  "dp-synthetic": {
+    title: "Synthetic trajectory demo",
+    description: "Mock raw vs privacy-preserved corridor trajectories for stakeholder review.",
+    type: "synthetic",
+  },
+  ppfl: {
+    title: "Federated learning demo",
+    description: "Illustrative collaborative training view across multiple agencies or sites.",
+    type: "media",
+    src: federatedLearningDemo,
+  },
+};
+
+function scoreTechniqueForDisplay(technique, weights) {
+  const normalized = normalizeWeights(weights);
+
+  return Object.entries(normalized).reduce(
+    (sum, [metric, weight]) => sum + technique.scores[metric] * weight,
+    0,
+  );
+}
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -552,6 +576,28 @@ function MetricsGuidePage() {
 
 function RecommendationsPage({ profile, activeDataset, weights, weightedResults }) {
   const navigate = useNavigate();
+  const displayResults = useMemo(() => {
+    const results = [...weightedResults];
+
+    featuredDemoTechniqueIds.forEach((techniqueId) => {
+      if (results.some((technique) => technique.id === techniqueId)) {
+        return;
+      }
+
+      const technique = pptCatalog.find((item) => item.id === techniqueId);
+      if (!technique) {
+        return;
+      }
+
+      results.push({
+        ...technique,
+        weightedScore: scoreTechniqueForDisplay(technique, weights),
+        featuredDemo: true,
+      });
+    });
+
+    return results;
+  }, [weightedResults, weights]);
 
   return (
     <section className="page">
@@ -579,18 +625,23 @@ function RecommendationsPage({ profile, activeDataset, weights, weightedResults 
       </div>
 
       <div className="result-list">
-        {weightedResults.map((technique, index) => (
+        {displayResults.map((technique, index) => (
           <article key={technique.id} className={index === 0 ? "panel result-card top" : "panel result-card"}>
             <div className="result-header">
               <div>
                 <span className="rank-badge">#{index + 1}</span>
                 <h3>{technique.name}</h3>
-                <p>{technique.category}</p>
+                <div className="result-subhead">
+                  <p>{technique.category}</p>
+                  {technique.featuredDemo ? <span className="demo-chip">Featured demo</span> : null}
+                </div>
               </div>
               <div className="score-badge">{(technique.weightedScore * 100).toFixed(1)}</div>
             </div>
 
             <p>{technique.summary}</p>
+
+            {techniqueDemos[technique.id] ? <TechniqueDemo technique={technique} /> : null}
 
             <div className="metric-grid">
               {metrics.map((metric) => (
@@ -638,6 +689,73 @@ function RecommendationsPage({ profile, activeDataset, weights, weightedResults 
         </button>
       </div>
     </section>
+  );
+}
+
+function TechniqueDemo({ technique }) {
+  const demo = techniqueDemos[technique.id];
+  const [syntheticImageFailed, setSyntheticImageFailed] = useState(false);
+
+  if (!demo) {
+    return null;
+  }
+
+  return (
+    <div className="technique-demo">
+      <div className="technique-demo-head">
+        <strong>{demo.title}</strong>
+        <span className="demo-caption">Demo preview</span>
+      </div>
+      <p className="muted">{demo.description}</p>
+
+      {demo.type === "media" ? (
+        <div className="demo-media-frame">
+          <img className="demo-media" src={demo.src} alt={`${technique.name} demo`} />
+        </div>
+      ) : (
+        <div className="demo-media-frame">
+          {!syntheticImageFailed ? (
+            <img
+              className="demo-media"
+              src="/synthetic_trajectory.png"
+              alt={`${technique.name} demo`}
+              onError={() => setSyntheticImageFailed(true)}
+            />
+          ) : (
+            <SyntheticTrajectoryDemo />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SyntheticTrajectoryDemo() {
+  const maxValue = Math.max(...trajectoryPreview.flatMap((point) => [point.raw, point.protected]));
+
+  return (
+    <div className="synthetic-demo">
+      {trajectoryPreview.map((point) => (
+        <div key={point.lane} className="synthetic-demo-row">
+          <div className="lane-label">{point.lane}</div>
+          <div className="synthetic-demo-bars">
+            <div className="lane-track">
+              <div className="lane-bar raw" style={{ width: `${(point.raw / maxValue) * 100}%` }} />
+            </div>
+            <div className="lane-track">
+              <div
+                className="lane-bar safe"
+                style={{ width: `${(point.protected / maxValue) * 100}%` }}
+              />
+            </div>
+          </div>
+          <div className="lane-values">
+            <span>{point.raw}</span>
+            <span>{point.protected}</span>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
