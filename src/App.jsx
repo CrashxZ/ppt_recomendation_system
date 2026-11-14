@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import federatedLearningDemo from "../federated_learning.gif";
 import {
@@ -24,6 +24,7 @@ const steps = [
   { path: "/recommendations", label: "Recommendations" },
   { path: "/preview", label: "Data Preview" },
   { path: "/tradeoffs", label: "Tradeoffs" },
+  { path: "/playground", label: "FL Playground" },
 ];
 
 const metricGuideById = Object.fromEntries(metricGuides.map((metric) => [metric.id, metric]));
@@ -36,7 +37,7 @@ const techniqueDemos = {
   },
   ppfl: {
     title: "Federated learning demo",
-    description: "Illustrative collaborative training view across multiple agencies or sites.",
+    description: "Explore recorded trajectory predictions and highway inference attacks in the interactive playground.",
     type: "media",
     src: federatedLearningDemo,
   },
@@ -180,6 +181,7 @@ function ProtectedApp(props) {
             />
           }
         />
+        <Route path="/playground" element={<PlaygroundPage theme={props.theme} />} />
       </Routes>
     </Shell>
   );
@@ -709,8 +711,13 @@ function TechniqueDemo({ technique }) {
       <p className="muted">{demo.description}</p>
 
       {demo.type === "media" ? (
-        <div className="demo-media-frame">
-          <img className="demo-media" src={demo.src} alt={`${technique.name} demo`} />
+        <div>
+          <div className="demo-media-frame">
+            <img className="demo-media" src={demo.src} alt={`${technique.name} demo`} />
+          </div>
+          <Link className="secondary-button compact-button playground-link" to="/playground">
+            Open interactive FL playground
+          </Link>
         </div>
       ) : (
         <div className="demo-media-frame">
@@ -727,6 +734,64 @@ function TechniqueDemo({ technique }) {
         </div>
       )}
     </div>
+  );
+}
+
+function PlaygroundPage({ theme }) {
+  const frame = useRef(null);
+
+  function syncTheme() {
+    frame.current?.contentWindow?.postMessage(
+      { type: "pair:theme", theme },
+      window.location.origin,
+    );
+  }
+
+  useEffect(() => {
+    frame.current?.contentWindow?.postMessage(
+      { type: "pair:theme", theme },
+      window.location.origin,
+    );
+  }, [theme]);
+
+  return (
+    <section className="page playground-page">
+      <div className="page-header">
+        <div>
+          <span className="eyebrow">Federated learning · recorded experiment</span>
+          <h1>See what a model predicts and what an attacker learns.</h1>
+        </div>
+        <a
+          className="secondary-button compact-button"
+          href={`/playground/index.html?theme=${theme}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Open full screen
+        </a>
+      </div>
+
+      <div className="panel playground-intro">
+        <p>
+          Compare Standard FL and TAPPFL on NGSIM US-101 and I-80 trajectories.
+          Change the maneuver, vehicle, or prediction horizon to inspect path accuracy
+          alongside the attacker's highway guess.
+        </p>
+        <p className="muted">
+          These are precomputed experiment results, separate from PAIR's illustrative
+          recommendation scores. The attack measures highway inference from a learned
+          representation; it is not a general privacy guarantee.
+        </p>
+      </div>
+
+      <iframe
+        ref={frame}
+        className="playground-frame"
+        src="/playground/index.html"
+        title="NGSIM privacy and utility playground"
+        onLoad={syncTheme}
+      />
+    </section>
   );
 }
 

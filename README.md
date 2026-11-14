@@ -1,6 +1,6 @@
 # PAIR Task 2.2 Demo Mockup
 
-This repository will host a semi-working web mockup for the PAIR platform's **Section 5.2 / Task 2.2**:
+This repository hosts a semi-working web mockup for the PAIR platform's **Section 5.2 / Task 2.2**:
 
 - PPT recommendation system for transportation datasets and ITS applications
 - Stakeholder-facing web interface for exploring candidate privacy-preserving techniques
@@ -65,9 +65,38 @@ This keeps the initial demo easy to host while leaving room to add lightweight A
 - Tradeoff view for Pareto-optimal techniques
 - Visualization page with mock traffic charts and metric comparisons
 
+## Run locally
+
+```sh
+npm ci
+npm run dev
+```
+
+Use the demo credentials displayed on the login screen. Open **FL Playground** in
+the sidebar, or **Open interactive FL playground** from the federated-learning
+recommendation, to explore the recorded Standard FL and TAPPFL experiments.
+
+```sh
+npm run build
+npm run preview
+```
+
+The generated playground is checked in at `public/playground/index.html`, so
+ordinary Vite builds and static hosting do not require Python or a live model.
+The source, input bundles, and portable HTML are in [`playground/`](playground/README.md).
+After editing those sources, rebuild with Python 3:
+
+```sh
+npm run playground:build
+```
+
+The playground follows the portal's light/dark theme and also opens independently
+at `/playground/index.html`. Its highway inference attack results are recorded
+measurements, separate from the mock recommendation scores.
+
 ## Notes
 
-- This repo currently starts from the presentation only; the app will be built from scratch.
+- The portal is a client-side React app; the playground is a self-contained static page.
 - The demo should optimize for stakeholder clarity and credibility rather than backend completeness.
 - Any recommendation logic in v1 should be transparent and explainable, not presented as a validated scientific system.
 - The focus is the stakeholder-facing recommendation experience, not the full benchmark repository or cyberinfrastructure.

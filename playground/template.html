@@ -1,0 +1,779 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Compare trajectory prediction and highway inference for Standard FL and TAPPFL on recorded NGSIM results.">
+<title>PAIR | Privacy-Utility Playground</title>
+<script>
+const initialTheme = new URLSearchParams(window.location.search).get('theme');
+if (initialTheme === 'light' || initialTheme === 'dark') {
+  document.documentElement.dataset.theme = initialTheme;
+}
+</script>
+<style>
+/* Layout: one presentation screen. Left controls ~20%, center road scene ~50%, right results ~30%, training strip along the bottom. Stacks to one column on narrow screens. */
+:root{
+  --bg:#f3efe7; --panel:#fffcf7; --ink:#10231c; --ink-2:#4f635c; --ink-3:#5d7067; --line:rgba(16,35,28,.1); --line-2:rgba(15,118,110,.24);
+  --road:#dce5df; --shoulder:#e9eee7; --marking:#ffffff; --edge:#8aa398;
+  --fl:#0f766e; --fl-soft:rgba(15,118,110,.14); --tp:#b75b20; --tp-soft:rgba(223,122,54,.16);
+  --base:#7b9186; --sign-green:#0b4f4a; --sign-ink:#ffffff; --focus:#0f766e;
+  --shield-i:#1d4f9c; --shield-i-top:#c8202f; --shield-us:#ffffff; --shield-us-ink:#111418;
+  --f-display:"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --f-body:"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --f-data:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#071412; --panel:#0b1c1a; --ink:#e7f3ef; --ink-2:#9ab4ad; --ink-3:#91aaa2; --line:rgba(183,223,213,.12); --line-2:rgba(183,223,213,.25);
+  --road:#253d36; --shoulder:#142923; --marking:#c8ded5; --edge:#668e7d;
+  --fl:#39b7a6; --fl-soft:rgba(57,183,166,.20); --tp:#f4a261; --tp-soft:rgba(244,162,97,.18);
+  --base:#8aaa9b; --sign-green:#0b4f4a; --sign-ink:#e7f3ef; --focus:#8adfd0;
+  --shield-i:#2a5fb0; --shield-i-top:#d22e3c; --shield-us:#eef1f4; --shield-us-ink:#111418; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#071412; --panel:#0b1c1a; --ink:#e7f3ef; --ink-2:#9ab4ad; --ink-3:#91aaa2; --line:rgba(183,223,213,.12); --line-2:rgba(183,223,213,.25);
+  --road:#253d36; --shoulder:#142923; --marking:#c8ded5; --edge:#668e7d;
+  --fl:#39b7a6; --fl-soft:rgba(57,183,166,.20); --tp:#f4a261; --tp-soft:rgba(244,162,97,.18);
+  --base:#8aaa9b; --sign-green:#0b4f4a; --sign-ink:#e7f3ef; --focus:#8adfd0;
+  --shield-i:#2a5fb0; --shield-i-top:#d22e3c; --shield-us:#eef1f4; --shield-us-ink:#111418; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at top left,rgba(15,118,110,.16),transparent 32%),var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45}
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 28px;max-width:1680px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0}
+.num{font-family:var(--f-data);font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 24px}
+.sign{background:var(--sign-green);color:var(--sign-ink);border-radius:20px;padding:8px 14px 6px;border:2px solid var(--sign-green);box-shadow:inset 0 0 0 2px rgba(255,255,255,.85)}
+.sign .eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.85;font-weight:600}
+.sign h1{font-size:clamp(20px,2.4vw,28px);font-weight:800;letter-spacing:.01em}
+.headline{flex:1 1 360px;min-width:0}
+.headline h2{font-size:clamp(17px,1.8vw,22px);font-weight:700}
+.headline p{margin:4px 0 0;color:var(--ink-2);max-width:72ch}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2);border:1px solid var(--line-2);border-radius:999px;padding:3px 10px;background:var(--panel)}
+.badge i{width:7px;height:7px;border-radius:50%;background:var(--ink-3);display:inline-block}
+
+/* grid */
+.app{display:grid;grid-template-columns:minmax(210px,19%) minmax(0,1fr) minmax(320px,31%);gap:14px;align-items:start}
+@media (max-width:1180px){.app{grid-template-columns:minmax(0,1fr) minmax(320px,38%)}.controls{grid-column:1 / -1}}
+@media (max-width:820px){.app{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:16px;min-width:0;box-shadow:0 12px 36px rgba(0,0,0,.08)}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.ptitle{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.ptitle h3{font-size:15px;font-weight:700}
+.kicker{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.note{font-size:12px;color:var(--ink-3)}
+.note b{color:var(--ink-2);font-weight:600}
+
+/* controls */
+.controls{display:flex;flex-direction:column;gap:16px}
+@media (max-width:1180px){.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}
+.ctl label,.ctl .lab{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin-bottom:6px}
+.seg{display:flex;flex-wrap:wrap;gap:4px}
+.seg button{border:1px solid var(--line-2);background:transparent;border-radius:999px;padding:6px 9px;font-size:13px;cursor:pointer;line-height:1.2}
+.seg button[aria-pressed="true"]{background:var(--fl-soft);color:var(--fl);border-color:var(--fl)}
+.seg button:disabled{cursor:not-allowed;opacity:.45;border-style:dashed}
+.stack{display:flex;flex-direction:column;gap:4px}
+.stack button{text-align:left;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.stack button small{font-size:11px;opacity:.75}
+.toggle{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px}
+.toggle input{width:16px;height:16px;accent-color:var(--ink)}
+.btn{border:1px solid var(--line-2);background:var(--panel);border-radius:999px;padding:7px 10px;font-size:13px;cursor:pointer;font-weight:600}
+.btn.primary{background:var(--fl-soft);color:var(--fl);border-color:var(--fl)}
+.scenes{display:flex;flex-wrap:wrap;gap:4px}
+.scenes button{min-width:34px;padding:5px 6px;border:1px solid var(--line-2);border-radius:6px;background:transparent;cursor:pointer;font-family:var(--f-data);font-size:12px;position:relative}
+.scenes button[aria-pressed="true"]{background:var(--fl-soft);color:var(--fl);border-color:var(--fl)}
+.scenes button.hard::after{content:"";position:absolute;top:2px;right:2px;width:5px;height:5px;border-radius:50%;background:var(--tp)}
+
+/* scene */
+.scenehead{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;margin-bottom:8px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend svg{flex:none}
+.canvasbox{position:relative;width:100%;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+#road{display:block;width:100%;height:340px}
+@media (max-width:820px){#road{height:260px}.tl-ticks{margin:2px 0 0 84px;font-size:10px}}
+.phase{position:absolute;left:10px;top:8px;font-family:var(--f-data);font-size:12px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:3px 8px;color:var(--ink)}
+.player{display:flex;align-items:center;gap:10px;margin-top:10px}
+.player input[type=range]{flex:1;min-width:0;accent-color:var(--ink)}
+.player .btn{min-width:74px}
+.tl-ticks{display:flex;justify-content:space-between;font-family:var(--f-data);font-size:11px;color:var(--ink-3);margin:2px 84px 0 84px}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px 16px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.fact .k{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.fact .v{font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px}
+.compare-line{margin-top:12px;padding:10px 12px;border-radius:8px;background:var(--bg);font-size:13px;color:var(--ink-2)}
+.compare-line b{color:var(--ink)}
+
+/* two-question header */
+.qpair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:820px){.qpair{grid-template-columns:1fr}}
+.q{border-left:3px solid var(--ink);padding:2px 0 2px 10px}
+.q .kicker{display:block}
+.q strong{font-family:var(--f-display);font-size:16px}
+.q.unwanted{border-left-style:dashed}
+
+.banner{border:1.5px dashed var(--tp);color:var(--ink);background:var(--tp-soft);border-radius:8px;padding:8px 10px;font-size:12.5px;margin-bottom:8px}
+
+/* overview pipeline (Tanvir's sketch) */
+.ov{display:grid;grid-template-columns:minmax(150px,1fr) 44px minmax(190px,1.2fr) 70px minmax(220px,1.5fr);grid-template-rows:auto auto auto;gap:6px 0;align-items:center}
+.ov .node{border:2px solid var(--ink);border-radius:14px;padding:10px 12px;background:var(--panel);min-width:0;text-align:left;cursor:pointer;display:block;width:100%}
+.ov .node:hover{background:var(--bg)}
+.ov .node .k{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.ov .node .t{font-family:var(--f-display);font-weight:700;font-size:15px}
+.ov .node .d{font-size:12px;color:var(--ink-2);margin-top:2px}
+.ov .node .v{font-family:var(--f-data);font-size:13px;margin-top:4px;display:flex;flex-direction:column;gap:2px}
+.ov .node .v span{display:flex;align-items:center;gap:6px}
+.ov .arrow{display:flex;align-items:center;justify-content:center;color:var(--ink)}
+.ov .dial{grid-column:3;grid-row:1}
+.ov .ds{grid-column:1;grid-row:2}
+.ov .a1{grid-column:2;grid-row:2}
+.ov .algo{grid-column:3;grid-row:2}
+.ov .split{grid-column:4;grid-row:1 / 4;align-self:stretch}
+.ov .outs{grid-column:5;grid-row:1 / 4;display:flex;flex-direction:column;gap:12px;justify-content:center}
+.ov .down{grid-column:3;grid-row:3;display:flex;flex-direction:column;align-items:center;gap:4px}
+.ov .vdn{height:20px;width:2px;background:var(--ink);position:relative}
+.ov .vdn::after{content:"";position:absolute;bottom:-2px;left:-4px;border:5px solid transparent;border-top:7px solid var(--ink);border-bottom:0}
+.ov .dial .node{border-style:dashed;text-align:center}
+.ov .dial .seg{justify-content:center;margin-top:6px}
+.ov .elabel{font-size:11px;color:var(--ink-3);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+@media (max-width:900px){
+  .ov{grid-template-columns:1fr;grid-template-rows:none}
+  .ov>*{grid-column:1 !important;grid-row:auto !important}
+  .ov .split{display:none}
+  .ov .a1 svg{transform:rotate(90deg)}
+  .ov .dial{order:2}.ov .ds{order:0}.ov .a1{order:1}.ov .algo{order:3}.ov .outs{order:4}.ov .down{order:5}
+}
+/* metrics */
+.mrow{display:grid;grid-template-columns:auto 1fr 1fr;gap:6px 12px;align-items:baseline}
+.mrow .h{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.mname{display:flex;align-items:center;gap:6px;font-weight:600;font-size:13px}
+.sw{width:14px;height:0;border-top:2.5px dashed currentColor;display:inline-block}
+.big{font-family:var(--f-data);font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.big small{font-size:12px;color:var(--ink-3);font-weight:400;margin-left:2px}
+.dim{opacity:.35}
+.sub{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+
+/* attack */
+.atk{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.atk.single{grid-template-columns:1fr}
+.atkcol{border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.atkcol h4{margin:0;font-size:13px;display:flex;align-items:center;gap:6px;font-family:var(--f-display)}
+.pbar{display:grid;grid-template-columns:74px 1fr 38px;align-items:center;gap:6px;font-size:12px}
+.pbar .track{height:12px;background:var(--bg);border-radius:3px;overflow:hidden;border:1px solid var(--line)}
+.pbar .fill{height:100%;border-radius:0 3px 3px 0}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;font-size:12px}
+.kv dt{color:var(--ink-3)} .kv dd{margin:0;font-weight:600;display:flex;align-items:center;gap:5px}
+.outcome{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;border-radius:999px;padding:2px 8px;border:1px solid var(--line-2)}
+.outcome.hit{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.caveat{font-size:12px;color:var(--ink-3);margin-top:8px;font-style:italic}
+
+/* grid of 100 */
+.grids{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.g100 figure{margin:0}
+.grids svg{width:100%;height:auto;display:block}
+.duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.g100 figcaption{font-size:12px;margin-top:4px;line-height:1.3}
+.g100 figcaption b{font-family:var(--f-data);font-size:15px;display:block}
+.glegend{display:flex;gap:14px;font-size:12px;color:var(--ink-2);margin-top:8px;flex-wrap:wrap}
+.glegend span{display:inline-flex;gap:5px;align-items:center}
+
+/* charts */
+svg text{fill:var(--ink-2);font-family:var(--f-body);font-size:11px}
+svg .tick{fill:var(--ink-3);font-family:var(--f-data);font-size:10px}
+svg .gridl{stroke:var(--line);stroke-width:1}
+svg .axis{stroke:var(--line-2);stroke-width:1}
+.chartbox{position:relative}
+.tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line-2);border-radius:6px;padding:6px 8px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.12);white-space:nowrap;z-index:5;color:var(--ink)}
+.tip b{font-family:var(--f-data)}
+.pt{cursor:pointer}
+.takeaway{font-size:13px;color:var(--ink);margin-top:8px;padding:8px 10px;border-radius:8px;background:var(--bg)}
+
+/* training strip */
+details.train{background:var(--panel);border:1px solid var(--line);border-radius:10px}
+details.train summary{cursor:pointer;padding:12px 14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;list-style:none}
+details.train summary::-webkit-details-marker{display:none}
+details.train summary h3{font-size:14px}
+details.train summary .chev{transition:transform .15s;display:inline-block}
+details.train[open] summary .chev{transform:rotate(90deg)}
+.spark-row{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+.tcharts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;padding:0 14px 14px}
+.tcharts figure{margin:0;min-width:0}
+.tcharts figcaption{font-size:12px;font-weight:600;margin-bottom:4px}
+
+.phase-step{font-size:12px;color:var(--ink-2);border:1px solid var(--line);border-radius:6px;padding:3px 8px}
+#trainChart .cl{fill:none;stroke:var(--ink-3);stroke-width:1.25;opacity:.55}
+#trainChart .cl.hot{stroke:var(--ink);stroke-width:2.25;opacity:1}
+/* table */
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+td{font-family:var(--f-data);font-variant-numeric:tabular-nums}
+td:first-child{font-family:var(--f-body)}
+.sources{font-size:12px;color:var(--ink-3);margin-top:10px;display:flex;flex-direction:column;gap:3px}
+.sources code{font-family:var(--f-data);font-size:11px;color:var(--ink-2);word-break:break-all}
+@media (prefers-reduced-motion: reduce){details.train summary .chev{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="sign">
+      <div class="eyebrow">TAPPFL · NGSIM US-101 &amp; I-80</div>
+      <h1>Privacy–Utility Playground</h1>
+    </div>
+    <div class="headline">
+      <h2>How much does this representation help an attacker infer location?</h2>
+    </div>
+    <span class="badge" id="srcBadge"><i></i>Precomputed results, not live training</span>
+  </header>
+
+
+  <section class="panel" aria-label="Overview">
+    <div class="ptitle"><h3>The idea in one picture</h3><span class="kicker">Click any box for details</span></div>
+    <p class="note" style="margin:-4px 0 12px;font-size:13px;color:var(--ink-2);max-width:80ch">We want to predict useful trajectory information without giving away private attributes like location.</p>
+    <div class="ov">
+      <div class="dial"><div class="node" data-jump="lamSeg"><div class="k">Privacy dial</div><div class="seg" id="ovDial"></div></div></div>
+      <div class="ds"><button type="button" class="node" data-jump="sceneTitle"><div class="k">1 · The data</div><div class="t">NGSIM dataset</div><div class="d" id="ovData"></div></button></div>
+      <div class="arrow a1" aria-hidden="true"><svg width="40" height="14"><line x1="2" y1="7" x2="32" y2="7" stroke="currentColor" stroke-width="2"/><path d="M30 2 L38 7 L30 12 Z" fill="currentColor"/></svg></div>
+      <div class="algo"><button type="button" class="node" data-jump="trainBox"><div class="k">2 · The model</div><div class="t" id="ovAlgoT">TAPPFL</div><div class="d" id="ovAlgo"></div></button></div>
+      <div class="split" aria-hidden="true"><svg width="100%" height="100%" viewBox="0 0 70 200" preserveAspectRatio="none"><path d="M2 100 C 35 100, 30 45, 62 45" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke" style="color:var(--ink)"/><path d="M2 100 C 35 100, 30 155, 62 155" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke" style="color:var(--ink)"/></svg></div>
+      <div class="outs">
+        <button type="button" class="node" data-jump="utilRow"><div class="k">3a · Is it still useful?</div><div class="t">Predict where the car will be</div><div class="v" id="ovUtil"></div></button>
+        <button type="button" class="node" data-jump="atk"><div class="k">3b · Does it leak?</div><div class="t">Can an attacker guess the highway?</div><div class="v" id="ovPriv"></div></button>
+      </div>
+      <div class="down"><div class="vdn" aria-hidden="true"></div><button type="button" class="node" data-jump="trainBox" style="text-align:center"><div class="k">How it learned</div><div class="d" id="ovTrain">Progress over training rounds</div></button></div>
+    </div>
+  </section>
+  <div class="qpair">
+    <div class="q"><span class="kicker">Utility</span><strong>Where will the vehicle go next?</strong></div>
+    <div class="q unwanted"><span class="kicker">Privacy</span><strong>Where was this trajectory recorded?</strong></div>
+  </div>
+
+  <div class="app">
+    <!-- LEFT: controls -->
+    <aside class="panel controls" aria-label="Controls">
+      <div class="ctl">
+        <span class="lab">Scenario</span>
+        <div class="seg" id="manSeg" role="group" aria-label="Maneuver"></div>
+      </div>
+      <div class="ctl">
+        <span class="lab" id="sceneLab">Vehicle</span>
+        <div class="scenes" id="sceneList" role="group" aria-labelledby="sceneLab"></div>
+        <div style="margin-top:8px"><button class="btn" id="hardBtn" type="button">Show challenging example</button></div>
+      </div>
+      <div class="ctl">
+        <span class="lab">Privacy objective weight λ</span>
+        <div class="seg stack" id="lamSeg" role="group" aria-label="Privacy objective weight"></div>
+        <p class="note" style="margin:6px 0 0">Only trained settings are selectable. λ weights the adversarial privacy term; it is not a privacy guarantee.</p>
+      </div>
+      <div class="ctl">
+        <span class="lab">Prediction horizon</span>
+        <div class="seg" id="horSeg" role="group" aria-label="Prediction horizon"></div>
+      </div>
+      <div class="ctl">
+        <span class="lab">View</span>
+        <div class="stack" style="gap:8px">
+          <button class="btn primary" id="cmpBtn" type="button" aria-pressed="true">Compare: Before / After TAPPFL</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CENTER: scene -->
+    <div class="col">
+    <section class="panel" aria-label="Traffic scene">
+      <div class="scenehead">
+        <div>
+          <span class="kicker">Utility · trajectory prediction</span>
+          <h3 id="sceneTitle" style="font-size:16px">Vehicle</h3>
+        </div>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="banner" id="banner" hidden></div>
+      <div class="canvasbox">
+        <canvas id="road" aria-label="Top-down road view with past, actual and predicted trajectories" role="img"></canvas>
+        <div class="phase" id="phase">t = 0.0 s</div>
+      </div>
+      <div class="player">
+        <button class="btn" id="playBtn" type="button">Pause</button>
+        <input type="range" id="scrub" min="-3" max="5" step="0.02" value="-3" aria-label="Scrub time">
+      </div>
+      <div class="tl-ticks" aria-hidden="true"><span>−3 s</span><span>prediction made (t = 0)</span><span>+5 s</span></div>
+      <p class="note" id="sceneNote" style="margin:8px 0 0"></p>
+      <div class="facts" id="facts"></div>
+      <div class="compare-line" id="compareLine"></div>
+    </section>
+
+    <div class="duo">
+      <section class="panel g100" aria-label="Attack accuracy as counts">
+        <div class="ptitle"><h3>Out of 100 vehicles, the attacker gets…</h3></div>
+        <div class="grids" id="grids"></div>
+        <div class="glegend"><span><svg width="10" height="14"><rect x="1" y="1" width="8" height="12" rx="2.5" fill="var(--ink-2)"/></svg>location inferred correctly</span><span><svg width="10" height="14"><rect x="1.5" y="1.5" width="7" height="11" rx="2.5" fill="none" stroke="var(--ink-3)"/></svg>inferred wrongly</span></div>
+        <p class="note" id="gridNote" style="margin:6px 0 0"></p>
+      </section>
+
+      <section class="panel" aria-label="Attacker advantage">
+        <div class="ptitle"><h3>Attacker's advantage over guessing</h3></div>
+        <div class="chartbox" id="advBox"></div>
+        <div class="takeaway" id="advTake"></div>
+      </section>
+
+    </div>
+    </div>
+
+    <!-- RIGHT: results -->
+    <div class="col">
+      <section class="panel" aria-label="Utility">
+        <div class="ptitle"><h3>Can we still predict the path?</h3><span class="kicker" id="utilHz">at 5 s</span></div>
+        <div class="mrow" id="utilRow"></div>
+        <div class="sub">
+          <div class="kicker" style="margin-bottom:6px">Whole test set</div>
+          <div class="mrow" id="utilTest"></div>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Attacker's view">
+        <div class="ptitle"><h3>Attacker's view</h3><span class="kicker">This vehicle only</span></div>
+        <p class="note" style="margin:-4px 0 10px">The attacker receives only the learned representation of the vehicle's 3-second history. The road view is for you, not for the attacker.</p>
+        <div class="atk" id="atk"></div>
+        <p class="caveat">One example. A single wrong guess does not show privacy; the counts below do.</p>
+      </section>
+
+      <section class="panel" aria-label="Privacy utility tradeoff">
+        <div class="ptitle"><h3>Privacy–utility trade-off</h3><span class="kicker">Click a point</span></div>
+        <div class="chartbox" id="scatBox"></div>
+        <p class="note" id="scatNote" style="margin:6px 0 0"></p>
+      </section>
+    </div>
+  </div>
+
+  <section class="panel" id="trainBox" aria-label="Training loss">
+    <div class="ptitle"><h3 id="trainTitle">Training loss</h3>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="phase-step num" id="trainStep"></span><button class="btn" id="replayBtn" type="button">Replay training</button></div></div>
+    <div class="chartbox" id="trainChart"></div>
+    <div class="legend" id="trainLegend" style="margin-top:6px"></div>
+    <p class="note" id="trainNote" style="margin:6px 0 0"></p>
+  </section>
+
+</div>
+
+<script id="pg-data" type="application/json">/*__DATA__*/</script>
+<script>
+(function(){
+"use strict";
+const D = JSON.parse(document.getElementById('pg-data').textContent);
+const MKEYS = D.model_order;               // e.g. ["fl","tappfl"]
+const M = D.models;
+const LOC = D.meta.locations;              // ["US-101","I-80"]
+const MAN = [["keep","Keep lane"],["left","Change left"],["right","Change right"]];
+const fmt = (v,d=1)=> (v==null||isNaN(v))?'–':Number(v).toFixed(d);
+const pct = (v,d=1)=> fmt(v*100,d)+'%';
+const $ = id=>document.getElementById(id);
+const css = n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const colVar = k=> M[k].color==='fl'?'--fl':'--tp';
+const softVar = k=> M[k].color==='fl'?'--fl-soft':'--tp-soft';
+
+const state = {man:'keep', idx:0, model: MKEYS[MKEYS.length-1], compare:true, h:5, t:-3, playing:true, unc:false, hardPtr:0};
+const saveUI=()=>{};
+
+function scenesFor(man){ return D.scenes.filter(s=>s.maneuver===man); }
+function scene(){ const l=scenesFor(state.man); return l[Math.min(state.idx,l.length-1)]; }
+function shownModels(){ return state.compare ? MKEYS : [state.model]; }
+
+/* ---------- shields ---------- */
+function shield(loc, size=18){
+  if(/I-?80/.test(loc)){
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4 Q12 1 21 4 L21 11 Q21 19 12 23 Q3 19 3 11 Z" fill="var(--shield-i)" stroke="var(--sign-ink)" stroke-width="1"/><path d="M3 4 Q12 1 21 4 L21 8 L3 8 Z" fill="var(--shield-i-top)"/><text x="12" y="17.5" text-anchor="middle" style="fill:#fff;font:700 8.5px var(--f-data)">80</text></svg>`;
+  }
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3 L20 3 Q19 6 21 8 Q22 17 12 22 Q2 17 3 8 Q5 6 4 3 Z" fill="var(--shield-us)" stroke="var(--shield-us-ink)" stroke-width="1.4"/><text x="12" y="15.5" text-anchor="middle" style="fill:var(--shield-us-ink);font:700 7px var(--f-data)">101</text></svg>`;
+}
+const swatch = k=>`<svg width="22" height="8" aria-hidden="true"><line x1="1" y1="4" x2="21" y2="4" stroke="var(${colVar(k)})" stroke-width="2.5" stroke-dasharray="5 3"/></svg>`;
+
+/* ---------- controls ---------- */
+function renderControls(){
+  $('manSeg').innerHTML = MAN.map(([k,l])=>`<button type="button" data-man="${k}" aria-pressed="${state.man===k}">${l}</button>`).join('');
+  const list = scenesFor(state.man);
+  $('sceneList').innerHTML = list.map((s,i)=>`<button type="button" data-i="${i}" aria-pressed="${i===state.idx}" class="${s.challenging?'hard':''}" title="${s.loc}${s.challenging?' · challenging':''}">${i+1}</button>`).join('');
+  $('sceneLab').textContent = `Vehicle (${list.length} in this scenario)`;
+  const stops = D.lambda_stops;
+  $('lamSeg').innerHTML = stops.map(st=>{
+    if(!st.model) return `<button type="button" disabled title="Not trained yet"><span>${st.label}</span><small>not trained yet</small></button>`;
+    return `<button type="button" data-model="${st.model}" aria-pressed="${state.model===st.model}"><span>${st.label}</span><small>${st.sub||''}</small></button>`;
+  }).join('');
+  $('horSeg').innerHTML = [1,2,3,4,5].map(h=>`<button type="button" data-h="${h}" aria-pressed="${state.h===h}">${h} s</button>`).join('');
+  const c=$('cmpBtn'); c.setAttribute('aria-pressed',state.compare); c.classList.toggle('primary',state.compare);
+  c.textContent = state.compare ? 'Comparing FL and TAPPFL' : 'Compare: Before / After TAPPFL';
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b||b.disabled) return;
+  if(b.dataset.man){ state.man=b.dataset.man; state.idx=0; restart(); }
+  else if(b.dataset.i!=null && b.closest('#sceneList')){ state.idx=+b.dataset.i; restart(); }
+  else if(b.dataset.model){ state.model=b.dataset.model; updateAll(); }
+  else if(b.dataset.h){ state.h=+b.dataset.h; saveUI(); updateAll(); }
+  else if(b.id==='cmpBtn'){ state.compare=!state.compare; updateAll(); }
+  else if(b.id==='hardBtn'){ const hard=D.scenes.filter(s=>s.challenging); if(!hard.length) return; const s=hard[state.hardPtr%hard.length]; state.hardPtr++; state.man=s.maneuver; state.idx=scenesFor(s.maneuver).indexOf(s); restart(); }
+  else if(b.id==='playBtn'){ state.playing=!state.playing; if(state.playing && state.t>=state.h+0.01) state.t=-3; hold=0; b.textContent=state.playing?'Pause':'Play'; }
+});
+$('scrub').addEventListener('input',e=>{state.t=+e.target.value; state.playing=false; $('playBtn').textContent='Play';});
+
+/* ---------- geometry helpers ---------- */
+const DTH = D.meta.dt_hist, DTF = D.meta.dt_fut;
+function histTimes(s){ const n=s.hist.length; return s.hist.map((_,i)=>-(n-1-i)*DTH); }
+function futTimes(s){ return s.fut.map((_,i)=>(i+1)*DTF); }
+function interp(times, pts, t){
+  if(t<=times[0]) return pts[0];
+  for(let i=1;i<times.length;i++){ if(t<=times[i]){ const a=(t-times[i-1])/(times[i]-times[i-1]); return [pts[i-1][0]+a*(pts[i][0]-pts[i-1][0]), pts[i-1][1]+a*(pts[i][1]-pts[i-1][1])]; } }
+  return pts[pts.length-1];
+}
+const kH = ()=> Math.round(state.h/DTF);
+function errAt(s,k,h){ const n=Math.round(h/DTF); let sum=0; for(let i=0;i<n;i++){ const p=s.pred[k][i], g=s.fut[i]; sum+=Math.hypot(p[0]-g[0],p[1]-g[1]); } const p=s.pred[k][n-1],g=s.fut[n-1]; return {ade:sum/n, fde:Math.hypot(p[0]-g[0],p[1]-g[1])}; }
+function speed(s){ if(s.speed!=null) return s.speed; const n=s.hist.length; const a=s.hist[n-1], b=s.hist[n-2]; return Math.hypot(a[0]-b[0],a[1]-b[1])/DTH; }
+
+/* ---------- road canvas ---------- */
+const cv=$('road'), ctx=cv.getContext('2d');
+let view=null, W=0, H=0;
+function fitCanvas(){ const r=cv.getBoundingClientRect(); const dpr=window.devicePixelRatio||1; W=r.width; H=r.height; cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); ctx.setTransform(dpr,0,0,dpr,0,0); computeView(); }
+new ResizeObserver(fitCanvas).observe(cv);
+const LANE = D.meta.lane_width_m || 3.66;
+function computeView(){
+  const s=scene(); if(!s||!W) return;
+  const pts=[...s.hist,...s.fut,...MKEYS.flatMap(k=>s.pred[k])];
+  let x0=Math.min(...pts.map(p=>p[0])), x1=Math.max(...pts.map(p=>p[0]));
+  let y0=Math.min(-1.5*LANE, ...pts.map(p=>p[1])), y1=Math.max(1.5*LANE, ...pts.map(p=>p[1]));
+  (s.nbrs||[]).forEach(n=>{ if(n[0]>x0-30&&n[0]<x1+30){} });
+  const padL=22,padR=22,padT=34,padB=26;
+  x0-=10; x1+=12; y0-=1.6; y1+=1.6;
+  const sx=(W-padL-padR)/(x1-x0), sy=(H-padT-padB)/(y1-y0);
+  view={x0,x1,y0,y1,sx,sy,padL,padT};
+}
+const X = x=> view.padL+(x-view.x0)*view.sx;
+const Y = y=> view.padT+(view.y1-y)*view.sy;   // lateral +y = driver's left = up
+function poly(pts){ ctx.beginPath(); pts.forEach((p,i)=>i?ctx.lineTo(X(p[0]),Y(p[1])):ctx.moveTo(X(p[0]),Y(p[1]))); }
+function car(p, heading, fill, stroke, alpha=1){
+  const L=4.6*view.sx, Wd=1.9*view.sy;
+  ctx.save(); ctx.globalAlpha=alpha; ctx.translate(X(p[0]),Y(p[1]));
+  ctx.rotate(-Math.atan2(heading[1]*view.sy, heading[0]*view.sx));
+  const r=Math.min(3,Wd/3);
+  ctx.beginPath(); ctx.roundRect(-L/2,-Wd/2,Math.max(L,8),Math.max(Wd,5),r); ctx.fillStyle=fill; ctx.fill();
+  if(stroke){ ctx.lineWidth=1.5; ctx.strokeStyle=stroke; ctx.stroke(); }
+  ctx.restore();
+}
+let hold=0, last=performance.now();
+function draw(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  const s=scene();
+  if(state.playing && s){
+    if(hold>0){ hold-=dt; }
+    else {
+      const prev=state.t; state.t+=dt*1.0;
+      if(prev<0 && state.t>=0){ state.t=0; hold=1.4; }
+      if(state.t>=state.h){ state.t=state.h; hold=2.2; state._wrap=true; }
+    }
+    if(state._wrap && hold<=0){ state._wrap=false; state.t=-3; }
+    $('scrub').value=state.t;
+  }
+  if(s && view) render(s);
+  requestAnimationFrame(draw);
+}
+function render(s){
+  const t=state.t, h=state.h, K=kH();
+  const C={road:css('--road'),sh:css('--shoulder'),mk:css('--marking'),edge:css('--edge'),ink:css('--ink'),ink2:css('--ink-2'),ink3:css('--ink-3'),panel:css('--panel'),base:css('--base')};
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle=C.sh; ctx.fillRect(0,0,W,H);
+  const top=Y(1.5*LANE), bot=Y(-1.5*LANE);
+  ctx.fillStyle=C.road; ctx.fillRect(0,top,W,bot-top);
+  ctx.strokeStyle=C.edge; ctx.lineWidth=2; ctx.setLineDash([]);
+  [top,bot].forEach(yy=>{ctx.beginPath();ctx.moveTo(0,yy);ctx.lineTo(W,yy);ctx.stroke();});
+  // lane dividers: 3 m dashes, 9 m gaps (US practice: 10 ft / 30 ft)
+  ctx.strokeStyle=C.mk; ctx.lineWidth=2;
+  const off=((view.x0%12)+12)%12;
+  ctx.setLineDash([3*view.sx, 9*view.sx]); ctx.lineDashOffset = off*view.sx;
+  [0.5*LANE,-0.5*LANE].forEach(y=>{ctx.beginPath();ctx.moveTo(0,Y(y));ctx.lineTo(W,Y(y));ctx.stroke();});
+  ctx.setLineDash([]); ctx.lineDashOffset=0;
+  // distance ticks
+  ctx.fillStyle=C.ink3; ctx.font='10px '+css('--f-data'); ctx.textAlign='center';
+  const step = (view.x1-view.x0)>160?40:20;
+  for(let x=Math.ceil(view.x0/step)*step; x<=view.x1; x+=step){ ctx.fillRect(X(x)-0.5,H-20,1,5); ctx.fillText((x>0?'+':'')+x+' m',X(x),H-6); }
+  ctx.textAlign='right'; ctx.font='11px '+css('--f-body'); ctx.fillText('direction of travel →', W-10, 20); ctx.textAlign='left';
+  // neighbours at t=0
+  (s.nbrs||[]).forEach(n=>{
+    let p=n.pos, hd=[1,0];
+    if(n.path){ const tt=Math.min(t,h); p=interp(n.times,n.path,tt); const q=interp(n.times,n.path,tt-0.6); hd=[p[0]-q[0]||1,p[1]-q[1]]; }
+    if(p[0]>view.x0-5&&p[0]<view.x1+5) car(p,hd,C.base,null,0.6); });
+  // history
+  const ht=histTimes(s);
+  const hp=[]; for(let i=0;i<s.hist.length;i++){ if(ht[i]<=t) hp.push(s.hist[i]); } if(t<0) hp.push(interp(ht,s.hist,t));
+  ctx.strokeStyle=C.ink3; ctx.lineWidth=3; ctx.lineCap='round'; ctx.lineJoin='round'; poly(t>=0?s.hist:hp); ctx.stroke();
+  // predictions (revealed at t>=0)
+  const show=shownModels();
+  if(t>=0){
+    const uk = state.compare ? state.model : show[0];
+    if(state.unc && s.sigma && s.sigma[uk]){
+      ctx.fillStyle=css(softVar(uk));
+      ctx.beginPath();
+      for(let i=0;i<K;i++){ const p=s.pred[uk][i], sg=s.sigma[uk][i]; ctx.moveTo(X(p[0])+Math.max(1,sg[0]*view.sx),Y(p[1])); ctx.ellipse(X(p[0]),Y(p[1]),Math.max(1,sg[0]*view.sx),Math.max(1,sg[1]*view.sy),0,0,Math.PI*2); }
+      ctx.fill('nonzero');
+    }
+    show.forEach(k=>{
+      const pts=[[0,0],...s.pred[k].slice(0,K)];
+      ctx.strokeStyle=css(colVar(k)); ctx.lineWidth=(state.compare&&k!==state.model)?2:2.5; ctx.setLineDash([7,5]); poly(pts); ctx.stroke(); ctx.setLineDash([]);
+      const e=pts[pts.length-1]; ctx.fillStyle=css(colVar(k)); ctx.beginPath(); ctx.arc(X(e[0]),Y(e[1]),4.5,0,Math.PI*2); ctx.fill();
+    });
+  }
+  // actual future
+  const ft=[0,...futTimes(s)], fp=[[0,0],...s.fut];
+  if(t>0){ const tt=Math.min(t,h); const pts=[]; for(let i=0;i<ft.length;i++){ if(ft[i]<=tt) pts.push(fp[i]); } pts.push(interp(ft,fp,tt)); ctx.strokeStyle=C.ink; ctx.lineWidth=3; poly(pts); ctx.stroke(); }
+  if(t>=h-1e-6){ const e=s.fut[K-1]; ctx.strokeStyle=C.ink; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(X(e[0]),Y(e[1]),5,0,Math.PI*2); ctx.stroke(); }
+  // ghost dots: where each model expected the car to be at time t
+  if(t>0){ show.forEach(k=>{ const p=interp(ft,[[0,0],...s.pred[k]],Math.min(t,h)); ctx.fillStyle=C.panel; ctx.strokeStyle=css(colVar(k)); ctx.lineWidth=2; ctx.beginPath(); ctx.arc(X(p[0]),Y(p[1]),3.5,0,Math.PI*2); ctx.fill(); ctx.stroke(); }); }
+  // ego
+  let pos, hd;
+  if(t<=0){ pos=interp(ht,s.hist,t); const p2=interp(ht,s.hist,t-0.6); hd=[pos[0]-p2[0]||1,pos[1]-p2[1]]; }
+  else { const tt=Math.min(t,h); pos=interp(ft,fp,tt); const p2=interp(ft,fp,tt-0.6); hd=[pos[0]-p2[0]||1,pos[1]-p2[1]]; }
+  car(pos,hd,C.ink,C.panel,1);
+  // phase label
+  const ph = t<0? `t = ${t.toFixed(1)} s · history` : (t<0.001? 't = 0 · prediction made' : `t = +${Math.min(t,h).toFixed(1)} s · actual future revealed`);
+  $('phase').textContent=ph;
+}
+requestAnimationFrame(draw);
+
+function restart(){ state.t=-3; hold=0; state._wrap=false; state.playing=true; $('playBtn').textContent='Pause'; computeView(); updateAll(); }
+
+/* ---------- scene text ---------- */
+function renderSceneText(){
+  const s=scene(); const list=scenesFor(state.man);
+  $('sceneTitle').textContent = `${MAN.find(m=>m[0]===state.man)[1]} · vehicle ${state.idx+1} of ${list.length}${s.challenging?' · challenging':''}`;
+  const show=shownModels();
+  $('legend').innerHTML = `<span><svg width="22" height="8"><line x1="1" y1="4" x2="21" y2="4" stroke="var(--ink-3)" stroke-width="3"/></svg>Past 3 s</span><span><svg width="22" height="8"><line x1="1" y1="4" x2="21" y2="4" stroke="var(--ink)" stroke-width="3"/></svg>Actual future</span>` + show.map(k=>`<span>${swatch(k)}${M[k].short} prediction</span>`).join('') + `<span><svg width="16" height="10"><rect x="1" y="1" width="14" height="8" rx="2" fill="var(--base)" opacity=".6"/></svg>Nearby cars (real paths)</span>`;
+  const v=speed(s);
+  $('facts').innerHTML = [
+    ['Recorded on', `${shield(s.loc)} ${s.loc}</div><div class="note">hidden from the attacker`],
+    ['Speed at t = 0', `<span class="num">${fmt(v,1)} m/s</span> <span class="note">(${fmt(v*2.23694,0)} mph)</span>`],
+    ['Maneuver', MAN.find(m=>m[0]===s.maneuver)[1]],
+    ['NGSIM id', `<span class="num">veh ${s.veh_id} · frame ${s.frame}</span>`],
+  ].map(([k,v])=>`<div class="fact"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+  const ex = view? (view.sy/view.sx):1;
+  $('sceneNote').textContent = `Ego-centric top-down view. Lateral distances are stretched ×${fmt(ex,1)} so lane changes are visible. Only the three lanes around the car are drawn, at ${LANE} m each; the car sits at the origin at t = 0. Nearby cars follow their recorded paths. Dots after t = 0 show where each model expected the car to be at that moment.`;
+  // compare line
+  const [a,b]=MKEYS; const ea=errAt(s,a,state.h), eb=errAt(s,b,state.h);
+  const pa=s.pred[a][kH()-1], pb=s.pred[b][kH()-1];
+  const gap=Math.hypot(pa[0]-pb[0],pa[1]-pb[1]);
+  const ti=LOC.indexOf(s.loc);
+  const qa=s.attack[a][ti], qb=s.attack[b][ti];
+  const dAcc=(M[b].attack_acc-M[a].attack_acc)*100;
+  $('compareLine').innerHTML = `<b>Before → after TAPPFL, same vehicle and ${state.h} s horizon.</b> The predicted endpoint moves <b class="num">${fmt(gap,1)} m</b> and its error goes from <b class="num">${fmt(ea.fde,1)}</b> to <b class="num">${fmt(eb.fde,1)} m</b>. On this vehicle the attacker's confidence in the true highway goes from <b class="num">${pct(qa,0)}</b> to <b class="num">${pct(qb,0)}</b>. Across the test set, attack accuracy changes by <b class="num">${dAcc>0?'+':''}${fmt(dAcc,1)} points</b>.`;
+}
+
+/* ---------- utility ---------- */
+function renderUtility(){
+  const s=scene(), h=state.h, show=MKEYS;
+  $('utilHz').textContent=`at ${h} s`;
+  let html=`<span class="h"></span><span class="h">ADE</span><span class="h">FDE</span>`;
+  show.forEach(k=>{ const e=errAt(s,k,h); const dim=!state.compare&&k!==state.model?' dim':'';
+    html+=`<span class="mname${dim}" style="color:var(${colVar(k)})"><span class="sw"></span><span style="color:var(--ink)">${M[k].short}</span></span><span class="big${dim}">${fmt(e.ade,2)}<small>m</small></span><span class="big${dim}">${fmt(e.fde,2)}<small>m</small></span>`; });
+  $('utilRow').innerHTML=html;
+  let t=`<span class="h"></span><span class="h">RMSE @ ${h} s</span><span class="h">ADE / FDE @ 5 s</span>`;
+  show.forEach(k=>{ const m=M[k]; const dim=!state.compare&&k!==state.model?' dim':'';
+    t+=`<span class="mname${dim}" style="color:var(${colVar(k)})"><span class="sw"></span><span style="color:var(--ink)">${m.short}</span></span><span class="big${dim}" style="font-size:16px">${fmt(m.rmse[h-1],2)}<small>m</small></span><span class="big${dim}" style="font-size:16px">${fmt(m.ade,2)} / ${fmt(m.fde,2)}<small>m</small></span>`; });
+  $('utilTest').innerHTML=t + `<span class="note" style="grid-column:1/-1">ADE = average distance from the true path; FDE = distance at the final step. Lower is better. ${D.meta.utility_note||''}</span>`;
+}
+
+/* ---------- attacker per example ---------- */
+function renderAttack(){
+  const s=scene(); const show=shownModels(); const ti=LOC.indexOf(s.loc);
+  $('atk').className='atk'+(show.length===1?' single':'');
+  $('atk').innerHTML = show.map(k=>{
+    const p=s.attack[k]; const g=p[0]>=p[1]?0:1; const hit=g===ti;
+    const bars=LOC.map((l,i)=>`<div class="pbar"><span style="display:flex;align-items:center;gap:3px">${shield(l,16)}<span class="num" style="font-size:11px;white-space:nowrap">${l}</span></span><span class="track"><span class="fill" style="display:block;width:${(p[i]*100).toFixed(1)}%;background:var(${i===g?colVar(k):'--base'})"></span></span><span class="num" style="text-align:right">${pct(p[i],0)}</span></div>`).join('');
+    return `<div class="atkcol"><h4 style="color:var(--ink)">${swatch(k)}${M[k].label}</h4>
+      <dl class="kv"><dt>Attacker sees</dt><dd>learned representation</dd><dt>Attacker guesses</dt><dd>${shield(LOC[g],16)}${LOC[g]}</dd><dt>Actual location</dt><dd>${shield(s.loc,16)}${s.loc}</dd></dl>
+      ${bars}
+      <div><span class="outcome ${hit?'hit':''}">${hit?'● Correct inference':'○ Incorrect inference'}</span></div></div>`;
+  }).join('');
+}
+
+/* ---------- 100 grid ---------- */
+function gridSVG(n, color, label){
+  const cw=10, ch=14, gx=3, gy=3; let out=`<svg viewBox="0 0 ${10*cw+9*gx} ${10*ch+9*gy}" role="img" aria-label="${label}: ${n} of 100">`;
+  for(let i=0;i<100;i++){ const r=Math.floor(i/10), c=i%10; const x=c*(cw+gx), y=r*(ch+gy);
+    out+= i<n ? `<rect x="${x+1}" y="${y+1}" width="${cw-2}" height="${ch-2}" rx="2.5" fill="var(${color})"/>` : `<rect x="${x+1.5}" y="${y+1.5}" width="${cw-3}" height="${ch-3}" rx="2.5" fill="none" stroke="var(--ink-3)" stroke-width="1"/>`; }
+  return out+'</svg>';
+}
+function renderGrids(){
+  const maj=D.baselines.majority;
+  const items=[{n:Math.round(maj*100),c:'--base',l:'No representation',s:'always guess the majority highway'}, ...MKEYS.map(k=>({n:Math.round(M[k].attack_acc*100),c:colVar(k),l:M[k].label,s:k===MKEYS[0]?'original representation':'protected representation',k}))];
+  $('grids').innerHTML=items.map(it=>`<figure class="${it.k&&!state.compare&&it.k!==state.model?'dim':''}">${gridSVG(it.n,it.c,it.l)}<figcaption><b>${it.n} / 100</b>${it.l}<br><span class="note">${it.s}</span></figcaption></figure>`).join('');
+  $('gridNote').innerHTML = `Each grid scales the measured accuracy on ${D.meta.attack_test_n?D.meta.attack_test_n.toLocaleString()+' ':''}held-out test samples to 100 vehicles. ${D.grid_note||''}`;
+}
+
+/* ---------- advantage chart ---------- */
+function tipper(box){ let t=box.querySelector('.tip'); if(!t){t=document.createElement('div');t.className='tip';t.hidden=true;box.appendChild(t);} return t; }
+function placeTip(box,tip,html,x,y){ tip.innerHTML=html; tip.hidden=false; const bw=box.clientWidth; const tw=tip.offsetWidth; tip.style.left=Math.max(0,Math.min(bw-tw,x+12))+'px'; tip.style.top=(y-34)+'px'; }
+function renderAdvantage(){
+  const box=$('advBox'); const maj=D.baselines.majority*100;
+  const rows=[...MKEYS.map(k=>({k,label:M[k].label,v:M[k].attack_acc*100,c:colVar(k)})).reverse()];
+  if(D.baselines.raw_history!=null) rows.push({label:'Raw 3 s history, no model',v:D.baselines.raw_history*100,c:'--base',raw:true});
+  // order: protected, original, raw
+  const w=Math.max(280,box.clientWidth||340), rh=34, top=22, left=8, right=58, hgt=top+rows.length*rh+22;
+  const lo=50, hi=Math.ceil((Math.max(...rows.map(r=>r.v))+3)/5)*5;
+  const x=v=>left+(v-lo)/(hi-lo)*(w-left-right);
+  let s=`<svg width="100%" viewBox="0 0 ${w} ${hgt}" role="img" aria-label="Attack accuracy compared with majority guessing">`;
+  for(let v=lo; v<=hi; v+=5){ s+=`<line class="gridl" x1="${x(v)}" x2="${x(v)}" y1="${top-4}" y2="${hgt-20}"/><text class="tick" x="${x(v)}" y="${hgt-6}" text-anchor="middle">${v}%</text>`; }
+  s+=`<line x1="${x(maj)}" x2="${x(maj)}" y1="${top-8}" y2="${hgt-20}" stroke="var(--ink-2)" stroke-width="1.5" stroke-dasharray="3 3"/><text x="${x(maj)+4}" y="${top-10}" style="font-size:11px;paint-order:stroke;stroke:var(--panel);stroke-width:4px">Majority guess ${fmt(maj,1)}%</text>`;
+  rows.forEach((r,i)=>{ const y=top+i*rh+6; const dim=r.k&&!state.compare&&r.k!==state.model;
+    s+=`<g class="advrow" data-i="${i}" opacity="${dim?.35:1}"><rect x="0" y="${y-4}" width="${w}" height="${rh}" fill="transparent"/>
+    <text x="${left}" y="${y+6}" style="font-size:11.5px;fill:var(--ink);paint-order:stroke;stroke:var(--panel);stroke-width:4px;stroke-linejoin:round">${r.label}</text>
+    <rect x="${x(maj)}" y="${y+11}" width="${Math.max(2,x(r.v)-x(maj)-1)}" height="9" rx="0" fill="var(${r.c})" ${r.raw?'fill-opacity=".45"':''}/>
+    <rect x="${x(r.v)-4}" y="${y+11}" width="4" height="9" rx="2" fill="var(${r.c})" ${r.raw?'fill-opacity=".45"':''}/>
+    <text class="tick" x="${x(r.v)+5}" y="${y+19}" style="fill:var(--ink);font-size:11px">${fmt(r.v,1)}% <tspan style="fill:var(--ink-3)">+${fmt(r.v-maj,1)}</tspan></text></g>`; });
+  s+='</svg>'; box.innerHTML=s; const tip=tipper(box);
+  box.querySelectorAll('.advrow').forEach(g=>{ g.addEventListener('mousemove',e=>{ const r=rows[+g.dataset.i]; const bb=box.getBoundingClientRect(); placeTip(box,tip,`${r.label}<br>Attack accuracy <b>${fmt(r.v,1)}%</b><br>Above majority guess <b>+${fmt(r.v-maj,1)} pts</b>`,e.clientX-bb.left,e.clientY-bb.top); }); g.addEventListener('mouseleave',()=>tip.hidden=true); });
+  const [a,b]=MKEYS; const adA=M[a].attack_acc*100-maj, adB=M[b].attack_acc*100-maj;
+  $('advTake').innerHTML = `Protection cut the attacker's advantage from <b class="num">+${fmt(adA,1)}</b> to <b class="num">+${fmt(adB,1)}</b> points above guessing, a reduction of <b class="num">${fmt(adA-adB,1)}</b>. The representation still reveals location.` + (D.baselines.raw_history!=null?` For scale, the raw 3-second history alone, with no model, already gives <b class="num">${fmt(D.baselines.raw_history*100,1)}%</b>.`:'');
+}
+
+/* ---------- scatter ---------- */
+function renderScatter(){
+  const box=$('scatBox'); const pts=D.points;
+  const w=Math.max(280,box.clientWidth||340), hgt=250, L=46, R=16, T=14, B=40;
+  const xs=pts.map(p=>p.rmse5), ys=pts.map(p=>p.attack*100);
+  let x0=Math.min(...xs), x1=Math.max(...xs); const xp=Math.max(0.25,(x1-x0)*0.35); x0=Math.floor((x0-xp)*4)/4; x1=Math.ceil((x1+xp)*4)/4;
+  const maj=D.baselines.majority*100, raw=D.baselines.raw_history!=null?D.baselines.raw_history*100:null;
+  const y0=50, y1=Math.ceil((Math.max(...ys, raw||0)+4)/5)*5;
+  const X=v=>L+(v-x0)/(x1-x0)*(w-L-R), Yf=v=>T+(y1-v)/(y1-y0)*(hgt-T-B);
+  let s=`<svg width="100%" viewBox="0 0 ${w} ${hgt}" role="img" aria-label="Scatter of trajectory error against attack accuracy">`;
+  for(let v=y0; v<=y1; v+=5) s+=`<line class="gridl" x1="${L}" x2="${w-R}" y1="${Yf(v)}" y2="${Yf(v)}"/><text class="tick" x="${L-6}" y="${Yf(v)+3}" text-anchor="end">${v}%</text>`;
+  const xstep=(x1-x0)>1.5?0.5:0.25;
+  for(let v=Math.ceil(x0/xstep)*xstep; v<=x1+1e-9; v+=xstep) s+=`<line class="axis" x1="${X(v)}" x2="${X(v)}" y1="${hgt-B}" y2="${hgt-B+4}"/><text class="tick" x="${X(v)}" y="${hgt-B+15}" text-anchor="middle">${v.toFixed(2)}</text>`;
+  s+=`<line class="axis" x1="${L}" x2="${w-R}" y1="${hgt-B}" y2="${hgt-B}"/>`;
+  s+=`<text x="${(L+w-R)/2}" y="${hgt-4}" text-anchor="middle">Test RMSE at 5 s (m), lower is better</text>`;
+  s+=`<text transform="translate(11 ${(T+hgt-B)/2}) rotate(-90)" text-anchor="middle">Attack accuracy</text>`;
+  s+=`<line x1="${L}" x2="${w-R}" y1="${Yf(maj)}" y2="${Yf(maj)}" stroke="var(--ink-2)" stroke-dasharray="3 3"/><text x="${w-R-2}" y="${Yf(maj)-4}" text-anchor="end">majority guess ${fmt(maj,1)}%</text>`;
+  if(raw!=null) s+=`<line x1="${L}" x2="${w-R}" y1="${Yf(raw)}" y2="${Yf(raw)}" stroke="var(--base)" stroke-dasharray="1 3"/><text x="${(L+w-R)/2}" y="${Yf(raw)+13}" text-anchor="middle">raw history alone ${fmt(raw,1)}%</text>`;
+  pts.forEach((p,i)=>{ const sel=p.model===state.model; const c=p.model?colVar(p.model):'--base';
+    s+=`<g class="pt" data-i="${i}" tabindex="${p.model?0:-1}">${sel?`<circle cx="${X(p.rmse5)}" cy="${Yf(p.attack*100)}" r="10" fill="none" stroke="var(--ink)" stroke-width="1.5"/>`:''}<circle cx="${X(p.rmse5)}" cy="${Yf(p.attack*100)}" r="6.5" fill="var(${c})" stroke="var(--panel)" stroke-width="2"/><circle cx="${X(p.rmse5)}" cy="${Yf(p.attack*100)}" r="16" fill="transparent"/><text x="${X(p.rmse5)+(i%2?-12:12)}" y="${Yf(p.attack*100)+(i%2?-10:16)}" text-anchor="${i%2?'end':'start'}" style="fill:var(--ink);font-weight:600">${p.label}</text></g>`; });
+  s+='</svg>'; box.innerHTML=s; const tip=tipper(box);
+  box.querySelectorAll('.pt').forEach(g=>{ const p=pts[+g.dataset.i];
+    g.addEventListener('mousemove',e=>{ const bb=box.getBoundingClientRect(); placeTip(box,tip,`<b>${p.label}</b><br>RMSE @ 5 s <b>${fmt(p.rmse5,2)} m</b><br>Attack accuracy <b>${fmt(p.attack*100,1)}%</b>`,e.clientX-bb.left,e.clientY-bb.top); });
+    g.addEventListener('mouseleave',()=>tip.hidden=true);
+    const act=()=>{ if(p.model){ state.model=p.model; updateAll(); } };
+    g.addEventListener('click',act); g.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();act();} });
+  });
+  $('scatNote').innerHTML = `Down and to the left is better. Each point is one trained, evaluated model; nothing is interpolated between them. ${D.scatter_note||''}`;
+}
+
+/* ---------- training strip ---------- */
+function lineChart(box, ch){
+  const w=Math.max(240,box.clientWidth||300), hgt=150, L=40, R=12, T=10, B=26;
+  const xs=ch.x; const all=ch.series.flatMap(s=>s.values.filter(v=>v!=null));
+  let y0=Math.min(...all), y1=Math.max(...all); const pad=(y1-y0)*0.12||0.05; y0-=pad; y1+=pad;
+  if(ch.y_range){ y0=ch.y_range[0]; y1=ch.y_range[1]; }
+  const X=v=>L+(v-xs[0])/((xs[xs.length-1]-xs[0])||1)*(w-L-R), Yf=v=>T+(y1-v)/(y1-y0)*(hgt-T-B);
+  let s=`<svg width="100%" viewBox="0 0 ${w} ${hgt}" role="img" aria-label="${ch.title}">`;
+  for(let i=0;i<=3;i++){ const v=y0+(y1-y0)*i/3; s+=`<line class="gridl" x1="${L}" x2="${w-R}" y1="${Yf(v)}" y2="${Yf(v)}"/><text class="tick" x="${L-5}" y="${Yf(v)+3}" text-anchor="end">${ch.pct?(v*100).toFixed(0)+'%':(Math.abs(v)>=100?v.toFixed(0):v.toFixed(Math.abs(y1-y0)<1?2:1))}</text>`; }
+  const xstep=Math.max(1,Math.ceil(xs.length/8));
+  xs.forEach((x,i)=>{ if(i%xstep===0||i===xs.length-1) s+=`<text class="tick" x="${X(x)}" y="${hgt-B+14}" text-anchor="middle">${x}</text>`; });
+  s+=`<text x="${w-R}" y="${hgt-2}" text-anchor="end">${ch.x_label||'round'}</text>`;
+  if(ch.ref!=null) s+=`<line x1="${L}" x2="${w-R}" y1="${Yf(ch.ref)}" y2="${Yf(ch.ref)}" stroke="var(--ink-2)" stroke-dasharray="3 3"/><text x="${L+4}" y="${Yf(ch.ref)-4}">${ch.ref_label||''}</text>`;
+  ch.series.forEach(se=>{ const d=se.values.map((v,i)=>v==null?null:`${X(xs[i])},${Yf(v)}`).filter(Boolean).join(' L'); s+=`<path d="M${d}" fill="none" stroke="var(${se.color})" stroke-width="2" ${se.dash?'stroke-dasharray="5 3"':''}/>`; const li=se.values.length-1; if(se.values[li]!=null) s+=`<circle cx="${X(xs[li])}" cy="${Yf(se.values[li])}" r="3.5" fill="var(${se.color})"/>`; });
+  s+=`<line class="xh" x1="0" x2="0" y1="${T}" y2="${hgt-B}" stroke="var(--ink-3)" visibility="hidden"/><rect x="${L}" y="${T}" width="${w-L-R}" height="${hgt-T-B}" fill="transparent" class="hit"/></svg>`;
+  box.innerHTML=s; const tip=tipper(box); const hit=box.querySelector('.hit'), xh=box.querySelector('.xh');
+  hit.addEventListener('mousemove',e=>{ const bb=box.querySelector('svg').getBoundingClientRect(); const sc=w/bb.width; const mx=(e.clientX-bb.left)*sc; let bi=0,bd=1e9; xs.forEach((x,i)=>{const d=Math.abs(X(x)-mx); if(d<bd){bd=d;bi=i;}}); xh.setAttribute('x1',X(xs[bi])); xh.setAttribute('x2',X(xs[bi])); xh.setAttribute('visibility','visible');
+    placeTip(box,tip,`${ch.x_label||'Round'} ${xs[bi]}<br>`+ch.series.map(se=>`<span style="color:var(${se.color})">■</span> ${se.name}: <b>${se.values[bi]==null?'–':(ch.pct?(se.values[bi]*100).toFixed(1)+'%':se.values[bi].toFixed(4))}</b>`).join('<br>'), X(xs[bi])/sc, e.clientY-bb.top); });
+  hit.addEventListener('mouseleave',()=>{tip.hidden=true; xh.setAttribute('visibility','hidden');});
+  return s;
+}
+let trainMax=Infinity, trainAnim=null, trainHot=-1;
+function trainRun(){ const R=(D.train_clients&&D.train_clients.runs)||{}; return R[state.model] ? [state.model,R[state.model]] : (Object.keys(R).length?[Object.keys(R)[0],R[Object.keys(R)[0]]]:[null,null]); }
+function renderTraining(){
+  const box=$('trainChart'); const [rk,run]=trainRun();
+  if(!run){ box.innerHTML=`<p class="note" style="margin:0">${D.training_empty||'Training loss history not loaded yet.'}</p>`; $('replayBtn').hidden=true; $('trainStep').hidden=true; return; }
+  $('replayBtn').hidden=false; $('trainStep').hidden=false;
+  $('trainTitle').textContent = `Training loss · ${M[rk]?M[rk].label:run.name}`;
+  const all=[...run.clients.flat().filter(Boolean), ...run.global]; const xs=all.map(p=>p[0]), ys=all.map(p=>p[1]);
+  const xmax=Math.max(...xs), xmin=Math.min(...xs,0); let ymax=Math.max(...ys), ymin=Math.min(0,...ys);
+  const w=Math.max(300,box.clientWidth||800), hgt=300, L=58, R=14, T=12, B=30;
+  const LOG=!!run.log && ymin>=0; let lmin=0,lmax=1;
+  if(LOG){ const pos=ys.filter(v=>v>0); lmin=Math.floor(Math.log10(Math.min(...pos))); lmax=Math.ceil(Math.log10(ymax)); }
+  const X=v=>L+(v-xmin)/(xmax-xmin||1)*(w-L-R), Y=v=>LOG? T+(lmax-Math.log10(Math.max(v,Math.pow(10,lmin))))/(lmax-lmin)*(hgt-T-B) : T+(ymax-v)/(ymax-ymin||1)*(hgt-T-B);
+  const nice=(m)=>{const p=Math.pow(10,Math.floor(Math.log10(m||1))); const f=m/p; return (f<=2?0.5:f<=5?1:2)*p;};
+  const ys_=nice(ymax-ymin), xs_=nice(xmax-xmin);
+  const fmtv=v=>Math.abs(v)>=1000?v.toLocaleString(undefined,{maximumFractionDigits:0}):(+v.toPrecision(4)).toString();
+  let o=`<svg width="100%" viewBox="0 0 ${w} ${hgt}" role="img" aria-label="Training loss per client and global average">`;
+  if(LOG){ for(let e=lmin;e<=lmax;e++){ const v=Math.pow(10,e); o+=`<line class="gridl" x1="${L}" x2="${w-R}" y1="${Y(v)}" y2="${Y(v)}"/><text class="tick" x="${L-6}" y="${Y(v)+3}" text-anchor="end">${fmtv(v)}</text>`; } }
+  else for(let v=Math.ceil(ymin/ys_)*ys_; v<=ymax+1e-9; v+=ys_) o+=`<line class="gridl" x1="${L}" x2="${w-R}" y1="${Y(v)}" y2="${Y(v)}"/><text class="tick" x="${L-6}" y="${Y(v)+3}" text-anchor="end">${fmtv(v)}</text>`;
+  for(let v=Math.ceil(xmin/xs_)*xs_; v<=xmax+1e-9; v+=xs_) o+=`<text class="tick" x="${X(v)}" y="${hgt-B+15}" text-anchor="middle">${v}</text>`;
+  o+=`<line class="axis" x1="${L}" x2="${w-R}" y1="${hgt-B}" y2="${hgt-B}"/><text x="${w-R}" y="${hgt-2}" text-anchor="end">${run.x_label||'step'}</text>`+(LOG?`<text x="${L}" y="${T+2}" dx="6" dy="8" style="fill:var(--ink-3)">log scale</text>`:'');
+  const path=pts=>{ let d='', pen=false; for(const p of pts){ if(!p){pen=false;continue;} if(p[0]>trainMax) break; d+=(pen?' L':' M')+X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1); pen=true; } return d.trim(); };
+  run.clients.forEach((c,i)=>{ o+=`<path class="cl${i===trainHot?' hot':''}" d="${path(c)}"/>`; });
+  const gc=`var(${M[rk]?colVar(rk):'--fl'})`;
+  o+=`<path d="${path(run.global)}" fill="none" stroke="${gc}" stroke-width="2.5" stroke-dasharray="6 4"/>`;
+  const gv=run.global.filter(p=>p[0]<=trainMax); if(gv.length){ const e=gv[gv.length-1]; o+=`<circle cx="${X(e[0])}" cy="${Y(e[1])}" r="4" fill="${gc}"/>`; }
+  o+=`<line class="xh" y1="${T}" y2="${hgt-B}" stroke="var(--ink-3)" visibility="hidden"/><rect class="hit" x="${L}" y="${T}" width="${w-L-R}" height="${hgt-T-B}" fill="transparent"/></svg>`;
+  box.innerHTML=o;
+  const cur=Math.min(trainMax,xmax);
+  $('trainStep').textContent = `${run.x_label||'step'} ${Math.round(cur)} / ${xmax}`;
+  $('trainLegend').innerHTML = `<span><svg width="22" height="8"><line x1="1" y1="4" x2="21" y2="4" stroke="var(--ink-3)" stroke-width="1.5"/></svg>Each thin line is one client (${run.clients.length} clients, training in turn); hover to pick one out</span><span><svg width="22" height="8"><line x1="1" y1="4" x2="21" y2="4" stroke="${gc}" stroke-width="2.5" stroke-dasharray="6 4"/></svg>Global average</span>`;
+  $('trainNote').innerHTML = (run.note||'') + ' Recorded during training; Replay redraws it as it happened.';
+  const tip=tipper(box), hit=box.querySelector('.hit'), xh=box.querySelector('.xh');
+  hit.addEventListener('mousemove',e=>{ const bb=box.querySelector('svg').getBoundingClientRect(); const sc=w/bb.width; const mx=(e.clientX-bb.left)*sc, my=(e.clientY-bb.top)*sc;
+    const step=xmin+(mx-L)/(w-L-R)*(xmax-xmin);
+    let best=-1,bd=1e9,bv=null; run.clients.forEach((c,i)=>{ let q=null; for(const p of c){ if(!p) continue; if(p[0]<=step) q=p; else break; } if(q&&q[0]<=trainMax){ const d=Math.abs(Y(q[1])-my); if(d<bd){bd=d;best=i;bv=q;} } });
+    let g=null; for(const p of run.global){ if(p[0]<=step&&p[0]<=trainMax) g=p; }
+    xh.setAttribute('x1',mx); xh.setAttribute('x2',mx); xh.setAttribute('visibility','visible');
+    box.querySelectorAll('.cl').forEach((el,i)=>el.classList.toggle('hot',i===best)); trainHot=best;
+    placeTip(box,tip,`${run.x_label||'Step'} <b>${Math.round(step)}</b><br>${best>=0?`client_${best}: <b>${fmtv(bv[1])}</b><br>`:''}${g?`Global average: <b>${fmtv(g[1])}</b>`:''}`, mx/sc, my/sc); });
+  hit.addEventListener('mouseleave',()=>{ tip.hidden=true; xh.setAttribute('visibility','hidden'); trainHot=-1; box.querySelectorAll('.cl').forEach(el=>el.classList.remove('hot')); });
+}
+$('replayBtn').addEventListener('click',()=>{ const [,run]=trainRun(); if(!run) return; const xmax=Math.max(...run.global.map(p=>p[0]),...run.clients.flat().filter(Boolean).map(p=>p[0]));
+  cancelAnimationFrame(trainAnim); const dur=matchMedia('(prefers-reduced-motion: reduce)').matches?0:6000; const t0=performance.now();
+  const tick=now=>{ const f=dur?Math.min(1,(now-t0)/dur):1; trainMax=f*xmax; renderTraining(); if(f<1) trainAnim=requestAnimationFrame(tick); else { trainMax=Infinity; renderTraining(); } };
+  trainAnim=requestAnimationFrame(tick); });
+
+/* ---------- table ---------- */
+if(D.meta.scene_banner){ $('banner').hidden=false; $('banner').innerHTML=D.meta.scene_banner; }
+function renderTable(){
+  const maj=D.baselines.majority;
+  let h=`<thead><tr><th>Model</th><th>Attack acc.</th><th>US-101 / I-80</th><th>Above majority</th><th>RMSE 1 s</th><th>2 s</th><th>3 s</th><th>4 s</th><th>5 s</th><th>ADE 5 s</th><th>FDE 5 s</th></tr></thead><tbody>`;
+  MKEYS.forEach(k=>{ const m=M[k]; h+=`<tr><td>${m.label}</td><td>${pct(m.attack_acc)}</td><td>${m.per_class?pct(m.per_class[0])+' / '+pct(m.per_class[1]):'–'}</td><td>+${fmt((m.attack_acc-maj)*100,1)} pts</td>${m.rmse.map(v=>`<td>${fmt(v,2)}</td>`).join('')}<td>${fmt(m.ade,2)}</td><td>${fmt(m.fde,2)}</td></tr>`; });
+  h+=`<tr><td>Majority guess (no representation)</td><td>${pct(maj)}</td><td>–</td><td>0</td><td colspan="7"></td></tr>`;
+  if(D.baselines.raw_history!=null) h+=`<tr><td>Probe on raw 3 s history (no model)</td><td>${pct(D.baselines.raw_history)}</td><td>–</td><td>+${fmt((D.baselines.raw_history-maj)*100,1)} pts</td><td colspan="7"></td></tr>`;
+  (D.extra_rows||[]).forEach(r=>{ h+=`<tr><td>${r.label}</td><td>${r.attack!=null?pct(r.attack):'–'}</td><td>–</td><td>${r.attack!=null?'+'+fmt((r.attack-maj)*100,1)+' pts':'–'}</td><td colspan="4"></td><td>${r.rmse5!=null?fmt(r.rmse5,2):''}</td><td colspan="2"></td></tr>`; });
+  $('numTable').innerHTML=h+'</tbody>';
+  $('sources').innerHTML = (D.meta.sources||[]).map(s=>`<div>${s}</div>`).join('');
+  $('srcBadge').innerHTML = `<i></i>${D.meta.badge||'Precomputed results, not live training'}`;
+}
+
+
+function renderOverview(){
+  $('ovDial').innerHTML = D.lambda_stops.filter(st=>st.model).map(st=>`<button type="button" data-model="${st.model}" aria-pressed="${state.model===st.model}">${st.model==='fl'?'Off':'On (λ = 0.5)'}</button>`).join('');
+  $('ovData').innerHTML = 'Cameras filmed traffic on US-101 in Los Angeles and I-80 near Berkeley (NGSIM). We know each car\'s path, second by second.';
+  const m=M[state.model];
+  $('ovAlgoT').textContent = state.model==='fl' ? 'Standard model (no hiding)' : 'TAPPFL (trained to hide location)';
+  $('ovAlgo').innerHTML = 'Looks at the car\'s last 3 seconds and writes a short summary (a list of numbers). Many sites train it together without sharing raw data.' + (state.model==='fl'?'':' TAPPFL also practices against an attacker so the summary hides which highway it came from.');
+  const r=k=>{const mm=M[k]; return mm.rmse[state.h-1];};
+  $('ovUtil').innerHTML = `<span style="font-family:var(--f-body);color:var(--ink-2)">${state.h} seconds ahead, typically off by:</span>` + MKEYS.map(k=>`<span class="${k!==state.model&&!state.compare?'dim':''}">${swatch(k)}${M[k].short}: ${fmt(r(k),1)} m ≈ ${fmt(r(k)/4.5,1)} car lengths</span>`).join('');
+  $('ovPriv').innerHTML = `<span style="font-family:var(--f-body);color:var(--ink-2)">Seeing only the summary, the attacker is right:</span>` + MKEYS.map(k=>`<span class="${k!==state.model&&!state.compare?'dim':''}">${swatch(k)}${M[k].short}: ${Math.round(M[k].attack_acc*100)} out of 100 cars</span>`).join('') + `<span style="color:var(--ink-3)">Blind guessing: ${Math.round(D.baselines.majority*100)} out of 100</span>`;
+  $('ovTrain').textContent = D.training_summary || 'Per-round curves';
+}
+document.addEventListener('click',e=>{ const n=e.target.closest('[data-jump]'); if(!n||e.target.closest('button[data-model]')) return; const t=$(n.dataset.jump); if(!t) return; t.scrollIntoView({behavior: matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth', block:'center'}); });
+function updateAll(){ renderOverview(); renderControls(); renderSceneText(); renderUtility(); renderAttack(); renderGrids(); renderAdvantage(); renderScatter(); renderTraining(); }
+$('srcBadge').innerHTML = `<i></i>${D.meta.badge||'Precomputed results'}`;
+let rt; window.addEventListener('resize',()=>{clearTimeout(rt); rt=setTimeout(()=>{renderAdvantage(); renderScatter(); renderTraining();},120);});
+window.addEventListener('message', event => {
+  if (event.source !== window.parent || event.origin !== window.location.origin) return;
+  if (event.data?.type !== 'pair:theme') return;
+  const theme = event.data.theme;
+  if (theme !== 'light' && theme !== 'dark') return;
+  document.documentElement.dataset.theme = theme;
+  updateAll();
+});
+updateAll(); fitCanvas(); renderSceneText();
+})();
+</script>
+
+</body>
+</html>
