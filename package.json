@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "playground:build": "python playground/build.py",
+    "playground:build": "python3 playground/build.py",
     "build": "vite build",
     "preview": "vite preview"
   },

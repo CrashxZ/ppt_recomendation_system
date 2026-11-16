@@ -39,7 +39,7 @@ for `ovData`, `ovAlgo`, `ovUtil`, and `ovPriv`.
 From the repository root, using Python 3 (standard library only):
 
 ```sh
-python playground/build.py
+python3 playground/build.py
 ```
 
 This updates `data_real.json`, `playground.html`, and
@@ -49,7 +49,7 @@ Vite builds and Vercel deployments do not need to run Python.
 To view the alternative evaluation protocol:
 
 ```sh
-python playground/build.py --input playground_data_bs1.json
+python3 playground/build.py --input playground_data_bs1.json
 ```
 
 Run the default command again before committing to keep the checked-in demo on
@@ -58,9 +58,9 @@ the documented batched evaluation protocol.
 For individual pipeline steps, run from this directory:
 
 ```sh
-python convert.py playground_data.json
-python add_training.py data_real.json training_clients.json data_real.json
-python assemble.py template.html data_real.json playground.html
+python3 convert.py playground_data.json
+python3 add_training.py data_real.json training_clients.json data_real.json
+python3 assemble.py template.html data_real.json playground.html
 ```
 
 Edit `template.html` rather than generated HTML so the next rebuild preserves

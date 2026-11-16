@@ -30,6 +30,12 @@ BATCHED='batch_size_note' not in R['meta']
 D['meta']['badge']='Precomputed results · evaluated in batches of 512 cars' if BATCHED else 'Precomputed results · one car at a time'
 D['meta']['utility_note']=('Errors are Cartesian meters on the full 1,505,756-sample test set, evaluated in random batches of 512 cars.' if BATCHED else D['meta']['utility_note'])
 D['meta']['attack_test_n']=R['meta']['test_set']['attack_test_split_n']
+if BATCHED:
+    D['meta']['sources']=[
+        R['meta']['batch_dependence_note'],
+        'Attack: original MLP attacker weights, evaluated on the 236,914-sample held-out attack split using batched representations. Majority guess (always I-80) is 53.4%.',
+        'Trajectory error: Cartesian RMSE, ADE and FDE in meters on the full 1,505,756-sample NGSIM test set. TAPPFL uses the round-8 retrained decoder.',
+    ]
 g=R['grid']['samples']; ca=sum(x['A']['correct'] for x in g); cb=sum(x['B']['correct'] for x in g)
 D['grid_note']=f"Majority guess means always answering I-80. In one fixed random draw of 100 test cars the attacker got {ca} (FL) and {cb} (TAPPFL) right, so single batches of 100 swing by several cars."
 D['training']=[]  # training section now built by add_training.py
