@@ -619,8 +619,6 @@ function RecommendationsPage({ profile, activeDataset, weights, weightedResults 
         </div>
       </div>
 
-      <ExperimentOverview />
-
       <div className="experiment-heading">
         <div><span className="eyebrow">Illustrative recommendation scores</span><h2>Compare candidate techniques</h2></div>
       </div>
@@ -689,6 +687,8 @@ function RecommendationsPage({ profile, activeDataset, weights, weightedResults 
           Open data preview
         </button>
       </div>
+
+      <ExperimentOverview />
     </section>
   );
 }
@@ -789,8 +789,6 @@ function TradeoffPage({ profile, paretoResults, weightedResults }) {
         </div>
       </div>
 
-      <ExperimentTradeoffs />
-
       <div className="experiment-heading"><div><span className="eyebrow">Illustrative candidate comparison</span><h2>Pareto exploration across recommendation metrics</h2></div></div>
       <div className="grid two-column">
         <div className="panel">
@@ -821,6 +819,8 @@ function TradeoffPage({ profile, paretoResults, weightedResults }) {
           </p>
         </div>
       </div>
+
+      <ExperimentTradeoffs />
 
       <div className="experiment-section-footer"><Link className="experiment-text-link" to="/preview">← Back to data preview</Link><Link className="experiment-text-link" to="/preferences">Adjust recommendation priorities →</Link></div>
     </section>
