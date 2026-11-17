@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import federatedLearningDemo from "../federated_learning.gif";
+import { ExperimentProvider } from "./components/experiment/ExperimentContext";
+import { ExperimentOverview, ExperimentTradeoffs, TrafficExperiment } from "./components/experiment/ExperimentPanels";
 import {
   applications,
   datasets,
@@ -10,10 +11,7 @@ import {
   metricGuideIntro,
   metricGuides,
   metrics,
-  predictionSeries,
   pptCatalog,
-  trafficSeries,
-  trajectorySampleRows,
   trajectoryPreview,
 } from "./data/mockData";
 import { calculateParetoFront, normalizeWeights, scoreTechniques } from "./lib/recommendation";
@@ -24,7 +22,6 @@ const steps = [
   { path: "/recommendations", label: "Recommendations" },
   { path: "/preview", label: "Data Preview" },
   { path: "/tradeoffs", label: "Tradeoffs" },
-  { path: "/playground", label: "FL Playground" },
 ];
 
 const metricGuideById = Object.fromEntries(metricGuides.map((metric) => [metric.id, metric]));
@@ -34,12 +31,6 @@ const techniqueDemos = {
     title: "Synthetic trajectory demo",
     description: "Mock raw vs privacy-preserved corridor trajectories for stakeholder review.",
     type: "synthetic",
-  },
-  ppfl: {
-    title: "Federated learning demo",
-    description: "Explore recorded trajectory predictions and highway inference attacks in the interactive playground.",
-    type: "media",
-    src: federatedLearningDemo,
   },
 };
 
@@ -115,75 +106,77 @@ function ProtectedApp(props) {
   }
 
   return (
-    <Shell
-      profile={props.profile}
-      activeDataset={props.activeDataset}
-      onLogout={props.onLogout}
-      theme={props.theme}
-      onToggleTheme={props.onToggleTheme}
-    >
-      <Routes>
-        <Route path="/" element={<Navigate to="/onboarding" replace />} />
-        <Route
-          path="/onboarding"
-          element={
-            <OnboardingPage
-              profile={props.profile}
-              setProfile={props.setProfile}
-              activeDataset={props.activeDataset}
-            />
-          }
-        />
-        <Route
-          path="/preferences"
-          element={
-            <PreferencesPage
-              profile={props.profile}
-              activeDataset={props.activeDataset}
-              weights={props.weights}
-              setWeights={props.setWeights}
-              weightedResults={props.weightedResults}
-            />
-          }
-        />
-        <Route
-          path="/metrics"
-          element={<MetricsGuidePage />}
-        />
-        <Route
-          path="/recommendations"
-          element={
-            <RecommendationsPage
-              profile={props.profile}
-              activeDataset={props.activeDataset}
-              weights={props.weights}
-              weightedResults={props.weightedResults}
-            />
-          }
-        />
-        <Route
-          path="/preview"
-          element={
-            <PreviewPage
-              profile={props.profile}
-              activeDataset={props.activeDataset}
-              weightedResults={props.weightedResults}
-            />
-          }
-        />
-        <Route
-          path="/tradeoffs"
-          element={
-            <TradeoffPage
-              profile={props.profile}
-              paretoResults={props.paretoResults}
-              weightedResults={props.weightedResults}
-            />
-          }
-        />
-        <Route path="/playground" element={<PlaygroundPage theme={props.theme} />} />
-      </Routes>
-    </Shell>
+    <ExperimentProvider>
+      <Shell
+        profile={props.profile}
+        activeDataset={props.activeDataset}
+        onLogout={props.onLogout}
+        theme={props.theme}
+        onToggleTheme={props.onToggleTheme}
+      >
+        <Routes>
+          <Route path="/" element={<Navigate to="/onboarding" replace />} />
+          <Route
+            path="/onboarding"
+            element={
+              <OnboardingPage
+                profile={props.profile}
+                setProfile={props.setProfile}
+                activeDataset={props.activeDataset}
+              />
+            }
+          />
+          <Route
+            path="/preferences"
+            element={
+              <PreferencesPage
+                profile={props.profile}
+                activeDataset={props.activeDataset}
+                weights={props.weights}
+                setWeights={props.setWeights}
+                weightedResults={props.weightedResults}
+              />
+            }
+          />
+          <Route
+            path="/metrics"
+            element={<MetricsGuidePage />}
+          />
+          <Route
+            path="/recommendations"
+            element={
+              <RecommendationsPage
+                profile={props.profile}
+                activeDataset={props.activeDataset}
+                weights={props.weights}
+                weightedResults={props.weightedResults}
+              />
+            }
+          />
+          <Route
+            path="/preview"
+            element={
+              <PreviewPage
+                profile={props.profile}
+                activeDataset={props.activeDataset}
+                weightedResults={props.weightedResults}
+              />
+            }
+          />
+          <Route
+            path="/tradeoffs"
+            element={
+              <TradeoffPage
+                profile={props.profile}
+                paretoResults={props.paretoResults}
+                weightedResults={props.weightedResults}
+              />
+            }
+          />
+          <Route path="/playground" element={<Navigate to="/recommendations" replace />} />
+        </Routes>
+      </Shell>
+    </ExperimentProvider>
   );
 }
 
@@ -608,7 +601,7 @@ function RecommendationsPage({ profile, activeDataset, weights, weightedResults 
           <span className="eyebrow">Candidate PPTs</span>
           <h1>Ranked recommendations for the current scenario.</h1>
         </div>
-        <button onClick={() => navigate("/tradeoffs")}>Explore tradeoffs</button>
+        <button onClick={() => navigate("/preview")}>Continue to data preview</button>
       </div>
 
       <div className="panel summary-banner">
@@ -626,6 +619,11 @@ function RecommendationsPage({ profile, activeDataset, weights, weightedResults 
         </div>
       </div>
 
+      <ExperimentOverview />
+
+      <div className="experiment-heading">
+        <div><span className="eyebrow">Illustrative recommendation scores</span><h2>Compare candidate techniques</h2></div>
+      </div>
       <div className="result-list">
         {displayResults.map((technique, index) => (
           <article key={technique.id} className={index === 0 ? "panel result-card top" : "panel result-card"}>
@@ -644,6 +642,7 @@ function RecommendationsPage({ profile, activeDataset, weights, weightedResults 
             <p>{technique.summary}</p>
 
             {techniqueDemos[technique.id] ? <TechniqueDemo technique={technique} /> : null}
+            {technique.id === "ppfl" ? <Link className="experiment-text-link" to="/preview">Inspect recorded FL traffic predictions →</Link> : null}
 
             <div className="metric-grid">
               {metrics.map((metric) => (
@@ -710,16 +709,6 @@ function TechniqueDemo({ technique }) {
       </div>
       <p className="muted">{demo.description}</p>
 
-      {demo.type === "media" ? (
-        <div>
-          <div className="demo-media-frame">
-            <img className="demo-media" src={demo.src} alt={`${technique.name} demo`} />
-          </div>
-          <Link className="secondary-button compact-button playground-link" to="/playground">
-            Open interactive FL playground
-          </Link>
-        </div>
-      ) : (
         <div className="demo-media-frame">
           {!syntheticImageFailed ? (
             <img
@@ -732,66 +721,7 @@ function TechniqueDemo({ technique }) {
             <SyntheticTrajectoryDemo />
           )}
         </div>
-      )}
     </div>
-  );
-}
-
-function PlaygroundPage({ theme }) {
-  const frame = useRef(null);
-
-  function syncTheme() {
-    frame.current?.contentWindow?.postMessage(
-      { type: "pair:theme", theme },
-      window.location.origin,
-    );
-  }
-
-  useEffect(() => {
-    frame.current?.contentWindow?.postMessage(
-      { type: "pair:theme", theme },
-      window.location.origin,
-    );
-  }, [theme]);
-
-  return (
-    <section className="page playground-page">
-      <div className="page-header">
-        <div>
-          <span className="eyebrow">Federated learning · recorded experiment</span>
-          <h1>See what a model predicts and what an attacker learns.</h1>
-        </div>
-        <a
-          className="secondary-button compact-button"
-          href={`/playground/index.html?theme=${theme}`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Open full screen
-        </a>
-      </div>
-
-      <div className="panel playground-intro">
-        <p>
-          Compare Standard FL and TAPPFL on NGSIM US-101 and I-80 trajectories.
-          Change the maneuver, vehicle, or prediction horizon to inspect path accuracy
-          alongside the attacker's highway guess.
-        </p>
-        <p className="muted">
-          These are precomputed experiment results, separate from PAIR's illustrative
-          recommendation scores. The attack measures highway inference from a learned
-          representation; it is not a general privacy guarantee.
-        </p>
-      </div>
-
-      <iframe
-        ref={frame}
-        className="playground-frame"
-        src="/playground/index.html"
-        title="NGSIM privacy and utility playground"
-        onLoad={syncTheme}
-      />
-    </section>
   );
 }
 
@@ -826,103 +756,24 @@ function SyntheticTrajectoryDemo() {
 
 function PreviewPage({ profile, activeDataset, weightedResults }) {
   const navigate = useNavigate();
-  const topTechnique = weightedResults[0];
-
   return (
     <section className="page">
       <div className="page-header">
         <div>
-          <span className="eyebrow">Dataset snapshot</span>
-          <h1>Mock traffic views, trajectory context, and short-horizon prediction.</h1>
+          <span className="eyebrow">Data preview</span>
+          <h1>See how a traffic trajectory becomes a prediction.</h1>
         </div>
         <button onClick={() => navigate("/tradeoffs")}>Continue to tradeoffs</button>
       </div>
-
-      <div className="grid two-column">
-        <div className="panel camera-panel">
-          <h3>Traffic camera style snapshot</h3>
-          <div className="camera-frame">
-            <img src="/login-source-3.jpeg" alt="Traffic intersection with vehicles" />
-            <div className="camera-overlay">
-              <span>Live intake: corridor camera A12</span>
-              <strong>22 tracked vehicles</strong>
-            </div>
-          </div>
-          <p className="muted">
-            Secondary visual cue only. The stakeholder-facing workflow still centers on trajectory
-            and privacy-preserving recommendation.
-          </p>
-        </div>
-
-        <div className="panel contrast">
-          <h3>Current dataset interpretation</h3>
-          <div className="key-value">
-            <span>Dataset</span>
-            <strong>{activeDataset.label}</strong>
-          </div>
-          <div className="key-value">
-            <span>Application</span>
-            <strong>{profile.application}</strong>
-          </div>
-          <div className="key-value">
-            <span>Top PPT</span>
-            <strong>{topTechnique?.name ?? "Not available"}</strong>
-          </div>
-          <div className="prediction-summary">
-            <strong>Prediction note</strong>
-            <p>
-              Corridor flow is expected to stabilize over the next 15 minutes with moderate speed
-              recovery if the current privacy-preserved release keeps lane-level counts intact.
-            </p>
-          </div>
-        </div>
+      <div className="panel summary-banner">
+        <div><strong>Current scenario</strong><p>{activeDataset.label}</p></div>
+        <div><strong>Application</strong><p>{profile.application}</p></div>
+        <div><strong>Top candidate</strong><p>{weightedResults[0]?.name ?? "No match"}</p></div>
       </div>
-
-      <div className="grid two-column charts">
-        <div className="panel">
-          <h3>Trajectory-derived traffic profile</h3>
-          <SimpleSeriesChart data={trafficSeries} />
-        </div>
-
-        <div className="panel">
-          <h3>Lane occupancy raw vs protected</h3>
-          <LaneComparisonChart data={trajectoryPreview} />
-        </div>
-      </div>
-
-      <div className="grid two-column">
-        <div className="panel">
-          <h3>Short-horizon prediction</h3>
-          <PredictionChart data={predictionSeries} />
-        </div>
-
-        <div className="panel">
-          <h3>Trajectory sample rows</h3>
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Vehicle</th>
-                  <th>Lane</th>
-                  <th>Speed</th>
-                  <th>Headway</th>
-                  <th>Next state</th>
-                </tr>
-              </thead>
-              <tbody>
-                {trajectorySampleRows.map((row) => (
-                  <tr key={row.vehicleId}>
-                    <td>{row.vehicleId}</td>
-                    <td>{row.lane}</td>
-                    <td>{row.speedMph} mph</td>
-                    <td>{row.headwaySec}s</td>
-                    <td>{row.nextState}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+      <TrafficExperiment />
+      <div className="experiment-section-footer">
+        <Link className="experiment-text-link" to="/recommendations">← Back to recommendations</Link>
+        <Link className="experiment-text-link" to="/tradeoffs">Review privacy and utility tradeoffs →</Link>
       </div>
     </section>
   );
@@ -933,11 +784,14 @@ function TradeoffPage({ profile, paretoResults, weightedResults }) {
     <section className="page">
       <div className="page-header">
         <div>
-          <span className="eyebrow">Pareto tradeoff exploration</span>
-          <h1>Nondominated candidate techniques for stakeholders without fixed priorities.</h1>
+          <span className="eyebrow">Tradeoffs and decision support</span>
+          <h1>Compare the privacy benefit with the utility cost.</h1>
         </div>
       </div>
 
+      <ExperimentTradeoffs />
+
+      <div className="experiment-heading"><div><span className="eyebrow">Illustrative candidate comparison</span><h2>Pareto exploration across recommendation metrics</h2></div></div>
       <div className="grid two-column">
         <div className="panel">
           <h3>Pareto front</h3>
@@ -968,17 +822,7 @@ function TradeoffPage({ profile, paretoResults, weightedResults }) {
         </div>
       </div>
 
-      {/* <div className="grid two-column charts">
-        <div className="panel">
-          <h3>Traffic volume and speed snapshot</h3>
-          <SimpleSeriesChart data={trafficSeries} />
-        </div>
-
-        <div className="panel">
-          <h3>Lane-level raw vs protected counts</h3>
-          <LaneComparisonChart data={trajectoryPreview} />
-        </div>
-      </div> */}
+      <div className="experiment-section-footer"><Link className="experiment-text-link" to="/preview">← Back to data preview</Link><Link className="experiment-text-link" to="/preferences">Adjust recommendation priorities →</Link></div>
     </section>
   );
 }
@@ -991,99 +835,6 @@ function MetricTile({ label, value }) {
       <div className="meter">
         <div className="meter-fill" style={{ width: `${value * 100}%` }} />
       </div>
-    </div>
-  );
-}
-
-function SimpleSeriesChart({ data }) {
-  const maxVolume = Math.max(...data.map((point) => point.rawVolume));
-  const maxSpeed = Math.max(...data.map((point) => point.avgSpeed));
-
-  return (
-    <div className="chart-card">
-      {data.map((point) => (
-        <div key={point.minute} className="chart-row">
-          <div className="chart-label">{point.minute}</div>
-          <div className="chart-bars">
-            <div
-              className="bar raw"
-              style={{ width: `${(point.rawVolume / maxVolume) * 100}%` }}
-            />
-            <div
-              className="bar safe"
-              style={{ width: `${(point.safeVolume / maxVolume) * 100}%` }}
-            />
-          </div>
-          <div className="chart-meta">
-            <span>{point.rawVolume}</span>
-            <span>
-              {point.avgSpeed}/{point.safeSpeed} mph
-            </span>
-            <span>{Math.round((point.avgSpeed / maxSpeed) * 100)}%</span>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function LaneComparisonChart({ data }) {
-  const maxValue = Math.max(...data.flatMap((point) => [point.raw, point.protected]));
-
-  return (
-    <div className="lane-chart">
-      {data.map((point) => (
-        <div key={point.lane} className="lane-row">
-          <div className="lane-label">{point.lane}</div>
-          <div className="lane-bars">
-            <div className="lane-track">
-              <div className="lane-bar raw" style={{ width: `${(point.raw / maxValue) * 100}%` }} />
-            </div>
-            <div className="lane-track">
-              <div
-                className="lane-bar safe"
-                style={{ width: `${(point.protected / maxValue) * 100}%` }}
-              />
-            </div>
-          </div>
-          <div className="lane-values">
-            <span>{point.raw}</span>
-            <span>{point.protected}</span>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function PredictionChart({ data }) {
-  const maxValue = Math.max(...data.flatMap((point) => [point.observed, point.predicted]));
-
-  return (
-    <div className="prediction-chart">
-      {data.map((point) => (
-        <div key={point.minute} className="prediction-row">
-          <div className="chart-label">{point.minute}</div>
-          <div className="prediction-bars">
-            <div className="lane-track">
-              <div
-                className="lane-bar raw"
-                style={{ width: `${(point.observed / maxValue) * 100}%` }}
-              />
-            </div>
-            <div className="lane-track">
-              <div
-                className="lane-bar safe"
-                style={{ width: `${(point.predicted / maxValue) * 100}%` }}
-              />
-            </div>
-          </div>
-          <div className="lane-values">
-            <span>{point.observed}/{point.predicted}</span>
-            <span>{point.confidence}</span>
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
