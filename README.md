@@ -72,31 +72,43 @@ npm ci
 npm run dev
 ```
 
-Use the demo credentials displayed on the login screen. Open **FL Playground** in
-the sidebar, or **Open interactive FL playground** from the federated-learning
-recommendation, to explore the recorded Standard FL and TAPPFL experiments.
+Use the demo credentials displayed on the login screen. Recorded Standard FL and
+TAPPFL experiments are integrated into the existing workflow:
+
+- **Recommendations:** the data → representation → utility/privacy overview,
+  model selection, and expandable per-client training curves.
+- **Data Preview:** all 36 recorded traffic scenes, maneuver/vehicle selection,
+  playback and scrubbing, trajectory errors, and per-vehicle highway inference.
+- **Tradeoffs:** measured privacy-utility points, attack accuracy versus majority
+  guessing, detailed metrics, and the portal's illustrative Pareto comparison.
+
+The selected model, vehicle, prediction horizon, and comparison mode are shared
+across these pages during the session. The former `/playground` route redirects
+to Recommendations.
 
 ```sh
 npm run build
 npm run preview
 ```
 
-The generated playground is checked in at `public/playground/index.html`, so
-ordinary Vite builds and static hosting do not require Python or a live model.
-The source, input bundles, and portable HTML are in [`playground/`](playground/README.md).
-After editing those sources, rebuild with Python 3:
+The portal uses native React components in `src/components/experiment/`, reading
+`playground/data_real.json`. The original standalone page remains checked in at
+`public/playground/index.html` for portable presentations. Ordinary Vite builds
+and static hosting do not require Python or a live model. Source data, input
+bundles, and portable HTML are in [`playground/`](playground/README.md).
+After changing evaluation inputs, rebuild with Python 3:
 
 ```sh
 npm run playground:build
 ```
 
-The playground follows the portal's light/dark theme and also opens independently
-at `/playground/index.html`. Its highway inference attack results are recorded
-measurements, separate from the mock recommendation scores.
+The integrated components follow the portal's light/dark theme. The standalone
+page also opens independently at `/playground/index.html`. Highway inference
+results are recorded measurements, separate from the mock recommendation scores.
 
 ## Notes
 
-- The portal is a client-side React app; the playground is a self-contained static page.
+- The portal is a client-side React app with shared experiment state; a self-contained static playground is also available.
 - The demo should optimize for stakeholder clarity and credibility rather than backend completeness.
 - Any recommendation logic in v1 should be transparent and explainable, not presented as a validated scientific system.
 - The focus is the stakeholder-facing recommendation experience, not the full benchmark repository or cyberinfrastructure.

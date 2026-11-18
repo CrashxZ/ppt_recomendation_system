@@ -7,8 +7,10 @@ These measurements are distinct from the PAIR portal's mock recommendation score
 
 ## Open the demo
 
-- In PAIR, sign in and select **FL Playground** from the sidebar.
-- From the federated-learning recommendation, select **Open interactive FL playground**.
+- In PAIR, sign in and follow **Recommendations → Data Preview → Tradeoffs**.
+  The overview and training history, recorded traffic playback, and measured
+  privacy-utility comparisons appear on their respective pages.
+- Model, horizon, vehicle, and comparison selections persist between these pages.
 - Open `playground.html` directly for a portable presentation with embedded data.
 - Static hosting serves the same page at `/playground/index.html`.
 
