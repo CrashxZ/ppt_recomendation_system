@@ -89,6 +89,15 @@ export const metricGuides = [
 
 export const datasets = [
   {
+    id: "iot",
+    label: "IoT",
+    type: "Vehicle trajectories",
+    cadence: "Variable GPS timestamps",
+    records: "Recorded data to be supplied",
+    sensitivity: "High",
+    useCases: ["Traffic flow analysis", "Planning and operations"],
+  },
+  {
     id: "ngsim-i80",
     label: "NGSIM I-80 Trajectory Sample",
     type: "Vehicle trajectories",

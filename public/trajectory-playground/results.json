@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "mia_metric": {
+    "name": "UNSPECIFIED",
+    "lower_is_better": null,
+    "notes": "Set metric name, scoring range, direction, evaluation protocol; do not treat MIA score as formal differential privacy budget."
+  },
+  "datasets": {
+    "ngsim-i80": {
+      "label": "NGSIM I-80",
+      "real": {
+        "video": "ngsim-i80/real_video_h264.mp4",
+        "density": "ngsim-i80/real_density.png"
+      },
+      "configurations": {
+        "nonprivate": {
+          "dp_enabled": false,
+          "sigma": null,
+          "video": "ngsim-i80/nonprivate/synthetic_video_h264.mp4",
+          "density": "ngsim-i80/nonprivate/synthetic_density.png",
+          "csv": "ngsim-i80/nonprivate/synthetic.csv",
+          "metrics": {
+            "mia": null,
+            "density_error": 0.02780540766679437,
+            "pattern_error": 0.016193163938161174,
+            "trip_error": 0.001818472031787018,
+            "length_error": 0.001927225531904163
+          }
+        },
+        "private": {
+          "dp_enabled": true,
+          "sigma": 0.1,
+          "video": "ngsim-i80/private/synthetic_video_h264.mp4",
+          "density": "ngsim-i80/private/synthetic_density.png",
+          "csv": "ngsim-i80/private/synthetic.csv",
+          "metrics": {
+            "mia": null,
+            "density_error": 0.03027457233263133,
+            "pattern_error": 0.0365806246339488,
+            "trip_error": 0.002795675422174635,
+            "length_error": 0.00516210592481679
+          }
+        }
+      }
+    },
+    "ngsim-us101": {
+      "label": "NGSIM US-101",
+      "real": {
+        "video": "ngsim-us101/real_video_h264.mp4",
+        "density": "ngsim-us101/real_density.png"
+      },
+      "configurations": {
+        "nonprivate": {
+          "dp_enabled": false,
+          "sigma": null,
+          "video": "ngsim-us101/nonprivate/synthetic_video_h264.mp4",
+          "density": "ngsim-us101/nonprivate/synthetic_density.png",
+          "csv": "ngsim-us101/nonprivate/synthetic.csv",
+          "metrics": {
+            "mia": null,
+            "density_error": 0.0075293148233846335,
+            "pattern_error": 0.19065872307907025,
+            "trip_error": 0.002616013311385901,
+            "length_error": 0.00257275972081163
+          }
+        },
+        "private": {
+          "dp_enabled": true,
+          "sigma": 0.1,
+          "video": "ngsim-us101/private/synthetic_video_h264.mp4",
+          "density": "ngsim-us101/private/synthetic_density.png",
+          "csv": "ngsim-us101/private/synthetic.csv",
+          "metrics": {
+            "mia": null,
+            "density_error": 0.009138106856570306,
+            "pattern_error": 0.2097147739325274,
+            "trip_error": 0.002626237044158209,
+            "length_error": 0.010300924073505134
+          }
+        }
+      }
+    },
+    "iot": {
+      "label": "IoT",
+      "real": {
+        "video": "iot/real_video_h264.mp4",
+        "density": "iot/real_density.png"
+      },
+      "configurations": {
+        "nonprivate": {
+          "dp_enabled": false,
+          "sigma": null,
+          "video": "iot/nonprivate/synthetic_video_h264.mp4",
+          "density": "iot/nonprivate/synthetic_density.png",
+          "csv": "iot/nonprivate/synthetic.csv",
+          "metrics": {
+            "mia": null,
+            "density_error": 0.08380874122112586,
+            "pattern_error": 0.016788715158699705,
+            "trip_error": 0.002275329155118225,
+            "length_error": 0.0026072178210799395
+          }
+        },
+        "private": {
+          "dp_enabled": true,
+          "sigma": 0.1,
+          "video": "iot/private/synthetic_video_h264.mp4",
+          "density": "iot/private/synthetic_density.png",
+          "csv": "iot/private/synthetic.csv",
+          "metrics": {
+            "mia": null,
+            "density_error": 0.08320037839015153,
+            "pattern_error": 0.01772978908274549,
+            "trip_error": 0.0029572174081996688,
+            "length_error": 0.05739248020188791
+          }
+        }
+      }
+    }
+  }
+}

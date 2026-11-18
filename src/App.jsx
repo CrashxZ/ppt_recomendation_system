@@ -17,6 +17,7 @@ import {
   trajectoryPreview,
 } from "./data/mockData";
 import { calculateParetoFront, normalizeWeights, scoreTechniques } from "./lib/recommendation";
+import TrajectoryPlayground from "./trajectory/TrajectoryPlayground";
 
 const steps = [
   { path: "/onboarding", label: "Dataset" },
@@ -25,6 +26,7 @@ const steps = [
   { path: "/preview", label: "Data Preview" },
   { path: "/tradeoffs", label: "Tradeoffs" },
   { path: "/playground", label: "FL Playground" },
+  { path: "/trajectory-playground", label: "Trajectory Playground" },
 ];
 
 const metricGuideById = Object.fromEntries(metricGuides.map((metric) => [metric.id, metric]));
@@ -182,6 +184,10 @@ function ProtectedApp(props) {
           }
         />
         <Route path="/playground" element={<PlaygroundPage theme={props.theme} />} />
+        <Route
+          path="/trajectory-playground"
+          element={<TrajectoryPlayground profile={props.profile} setProfile={props.setProfile} />}
+        />
       </Routes>
     </Shell>
   );
@@ -720,17 +726,22 @@ function TechniqueDemo({ technique }) {
           </Link>
         </div>
       ) : (
-        <div className="demo-media-frame">
-          {!syntheticImageFailed ? (
-            <img
-              className="demo-media"
-              src="/synthetic_trajectory.png"
-              alt={`${technique.name} demo`}
-              onError={() => setSyntheticImageFailed(true)}
-            />
-          ) : (
-            <SyntheticTrajectoryDemo />
-          )}
+        <div>
+          <div className="demo-media-frame">
+            {!syntheticImageFailed ? (
+              <img
+                className="demo-media"
+                src="/synthetic_trajectory.png"
+                alt={`${technique.name} demo`}
+                onError={() => setSyntheticImageFailed(true)}
+              />
+            ) : (
+              <SyntheticTrajectoryDemo />
+            )}
+          </div>
+          <Link className="secondary-button compact-button playground-link" to="/trajectory-playground">
+            Open interactive trajectory playground
+          </Link>
         </div>
       )}
     </div>
