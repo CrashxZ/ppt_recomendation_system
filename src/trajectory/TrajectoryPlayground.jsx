@@ -73,7 +73,7 @@ function MetricBars({ records, metric }) {
   );
 }
 
-export default function TrajectoryPlayground({ profile, setProfile }) {
+export default function TrajectoryPlayground({ profile, setProfile, mode = "standalone" }) {
   const datasetId = DATASETS.some((d) => d.id === profile.datasetId) ? profile.datasetId : "ngsim-i80";
   const [privacyId, setPrivacyId] = useState("nonprivate");
   const [manifest, setManifest] = useState(null);
@@ -146,17 +146,21 @@ export default function TrajectoryPlayground({ profile, setProfile }) {
 
   return (
     <section className="page tp-page">
+      {mode === "standalone" && (<>
       <div className="page-header">
         <div><span className="eyebrow">PAIR / privacy-preserving synthetic trajectories</span>
           <h1>Synthetic Trajectory</h1>
           <p className="muted">Compare real and synthetic vehicle trajectories, explore mobility patterns, and evaluate data quality.</p>
         </div>
       </div>
+      </>)}
       <div className="panel tp-settings">
+        {mode === "standalone" && (<>
         <div><label htmlFor="tp-dataset">Dataset</label><select id="tp-dataset" value={datasetId}
           onChange={(event) => setProfile((p) => ({ ...p, datasetId: event.target.value }))}>
           {DATASETS.map((d) => <option value={d.id} key={d.id}>{d.label}</option>)}
         </select></div>
+        </>)}
         <div><label htmlFor="tp-privacy">Privacy setting</label><select id="tp-privacy" value={privacyId}
           onChange={(event) => setPrivacyId(event.target.value)}>
           {LEVELS.map((p) => <option value={p.id} key={p.id}>{p.label}</option>)}
@@ -176,6 +180,7 @@ export default function TrajectoryPlayground({ profile, setProfile }) {
 
       </div>
       {loadError && <div className="panel tp-error" role="alert">{loadError}</div>}
+      {mode !== "tradeoffs" && (<>
       <div className="tp-section-head"><h2>Trajectory playback</h2><span className="muted">Real and synthetic views</span></div>
       <div className="tp-two-col">
         {videoPanel("Real trajectories", realVideo, realRef, false)}
@@ -202,6 +207,8 @@ export default function TrajectoryPlayground({ profile, setProfile }) {
           <span>{metric.category}</span><strong>{metric.label}</strong><b>{fmt(selectedMetrics[metric.key])}</b>
         </div>)}
       </div>
+      </>)}
+      {mode !== "preview" && (<>
       <div className="tp-section-head"><h2>Privacy–utility tradeoffs</h2><span className="muted">Compare both settings within {DATASETS.find((d) => d.id === datasetId)?.label}</span></div>
 
       <div className="panel tp-table-wrap"><h3>All privacy configurations</h3>
@@ -212,8 +219,9 @@ export default function TrajectoryPlayground({ profile, setProfile }) {
       </div>
       <div className="tp-bar-grid">{METRICS.map((m) => <MetricBars key={m.key} metric={m} records={records} />)}</div>
 
-      <div className="tp-action-row"><Link to="/tradeoffs" className="tp-download-link">Open PAIR tradeoffs →</Link>
-        <Link to="/onboarding" className="tp-plain-link">Back to dataset selection</Link></div>
+      </>)}
+      {mode === "standalone" && <div className="tp-action-row"><Link to="/tradeoffs?technique=dp-synthetic" className="tp-download-link">Synthetic data tradeoffs →</Link>
+        <Link to="/onboarding" className="tp-plain-link">Back to dataset selection</Link></div>}
     </section>
   );
 }
