@@ -23,7 +23,6 @@ const steps = [
   { path: "/recommendations", label: "Recommendations" },
   { path: "/preview", label: "Data Preview" },
   { path: "/tradeoffs", label: "Tradeoffs" },
-  { path: "/trajectory-playground", label: "Trajectory Playground" },
 ];
 
 const metricGuideById = Object.fromEntries(metricGuides.map((metric) => [metric.id, metric]));
@@ -176,7 +175,7 @@ function ProtectedApp(props) {
             }
           />
           <Route path="/playground" element={<Navigate to="/recommendations" replace />} />
-          <Route path="/trajectory-playground" element={<TrajectoryPlayground profile={props.profile} setProfile={props.setProfile} />} />
+          <Route path="/trajectory-playground" element={<Navigate to="/preview?technique=dp-synthetic" replace />} />
         </Routes>
       </Shell>
     </ExperimentProvider>
@@ -711,7 +710,7 @@ function TechniqueDemo({ technique }) {
         <span className="demo-caption">Demo preview</span>
       </div>
       <p className="muted">{demo.description}</p>
-      <Link className="experiment-text-link" to="/trajectory-playground">Open interactive trajectory playground →</Link>
+      <Link className="experiment-text-link" to="/preview?technique=dp-synthetic">Inspect recorded synthetic trajectories →</Link>
 
         <div className="demo-media-frame">
           {!syntheticImageFailed ? (
@@ -760,39 +759,63 @@ function SyntheticTrajectoryDemo() {
 
 function PreviewPage({ profile, activeDataset, weightedResults }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const syntheticSelected = new URLSearchParams(location.search).get("technique") === "dp-synthetic";
   return (
     <section className="page">
       <div className="page-header">
         <div>
           <span className="eyebrow">Data preview</span>
-          <h1>See how a traffic trajectory becomes a prediction.</h1>
+          <h1>{syntheticSelected ? "Explore real and synthetic trajectories." : "See how a traffic trajectory becomes a prediction."}</h1>
         </div>
-        <button onClick={() => navigate("/tradeoffs")}>Continue to tradeoffs</button>
+        <button onClick={() => navigate(syntheticSelected ? "/tradeoffs?technique=dp-synthetic" : "/tradeoffs")}>
+          Continue to tradeoffs
+        </button>
       </div>
       <div className="panel summary-banner">
         <div><strong>Current scenario</strong><p>{activeDataset.label}</p></div>
         <div><strong>Application</strong><p>{profile.application}</p></div>
         <div><strong>Top candidate</strong><p>{weightedResults[0]?.name ?? "No match"}</p></div>
       </div>
-      <TrafficExperiment />
+      <div className="panel tp-technique-selector">
+        <strong>Explore results for</strong>
+        <div className="tp-action-row">
+          <Link className={syntheticSelected ? "secondary-button compact-button" : "tp-download-link"} to="/preview">Federated Learning</Link>
+          <Link className={syntheticSelected ? "tp-download-link" : "secondary-button compact-button"} to="/preview?technique=dp-synthetic">Differentially Private Synthetic Trajectories</Link>
+        </div>
+      </div>
+      {syntheticSelected
+        ? <TrajectoryPlayground profile={profile} mode="preview" />
+        : <TrafficExperiment />}
       <div className="experiment-section-footer">
         <Link className="experiment-text-link" to="/recommendations">← Back to recommendations</Link>
-        <Link className="experiment-text-link" to="/tradeoffs">Review privacy and utility tradeoffs →</Link>
+        <Link className="experiment-text-link" to={syntheticSelected ? "/tradeoffs?technique=dp-synthetic" : "/tradeoffs"}>
+          Review privacy and utility tradeoffs →
+        </Link>
       </div>
     </section>
   );
 }
-
 function TradeoffPage({ profile, paretoResults, weightedResults }) {
+  const location = useLocation();
+  const syntheticSelected = new URLSearchParams(location.search).get("technique") === "dp-synthetic";
   return (
     <section className="page">
       <div className="page-header">
         <div>
           <span className="eyebrow">Tradeoffs and decision support</span>
-          <h1>Compare the privacy benefit with the utility cost.</h1>
+          <h1>{syntheticSelected ? "Synthetic trajectory privacy–utility evaluation." : "Compare the privacy benefit with the utility cost."}</h1>
         </div>
       </div>
 
+      <div className="panel tp-technique-selector">
+        <strong>Explore results for</strong>
+        <div className="tp-action-row">
+          <Link className={syntheticSelected ? "secondary-button compact-button" : "tp-download-link"} to="/tradeoffs">Federated Learning and PAIR comparison</Link>
+          <Link className={syntheticSelected ? "tp-download-link" : "secondary-button compact-button"} to="/tradeoffs?technique=dp-synthetic">Differentially Private Synthetic Trajectories</Link>
+        </div>
+      </div>
+      {!syntheticSelected && (<>
       <div className="experiment-heading"><div><span className="eyebrow">Illustrative candidate comparison</span><h2>Pareto exploration across recommendation metrics</h2></div></div>
       <div className="grid two-column">
         <div className="panel">
@@ -825,8 +848,10 @@ function TradeoffPage({ profile, paretoResults, weightedResults }) {
       </div>
 
       <ExperimentTradeoffs />
+      </>)}
+      {syntheticSelected && <TrajectoryPlayground profile={profile} mode="tradeoffs" />}
 
-      <div className="experiment-section-footer"><Link className="experiment-text-link" to="/preview">← Back to data preview</Link><Link className="experiment-text-link" to="/preferences">Adjust recommendation priorities →</Link></div>
+      <div className="experiment-section-footer"><Link className="experiment-text-link" to={syntheticSelected ? "/preview?technique=dp-synthetic" : "/preview"}>← Back to data preview</Link><Link className="experiment-text-link" to="/preferences">Adjust recommendation priorities →</Link></div>
     </section>
   );
 }
